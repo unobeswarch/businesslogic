@@ -1,0 +1,18 @@
+type PreDiagnostic{
+    prediagnostic_id: ID!
+    pacienteId: ID!
+    urlrad: String!
+    estado:String!
+    resultadosModelo:ResultadosModelo!
+    fechaSubida:String!
+}
+
+type ResultadosModelo{
+    probNeumonia:Float!
+    etiqueta:String!
+    fechaProcesamiento:String!
+}
+
+type Query{
+    getPreDiagnostic(id:ID!):PreDiagnostic
+}
