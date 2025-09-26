@@ -2,6 +2,18 @@
 
 package model
 
+type Case struct {
+	ID              string            `json:"id"`
+	PacienteID      string            `json:"pacienteId"`
+	PacienteNombre  string            `json:"pacienteNombre"`
+	PacienteEmail   string            `json:"pacienteEmail"`
+	FechaSubida     string            `json:"fechaSubida"`
+	Estado          string            `json:"estado"`
+	URLRadiografia  string            `json:"urlRadiografia"`
+	Resultados      *ResultadosModelo `json:"resultados"`
+	DoctorAsignado  *string           `json:"doctorAsignado"`
+}
+
 type PreDiagnostic struct {
 	PrediagnosticID  string            `json:"prediagnostic_id"`
 	PacienteID       string            `json:"pacienteId"`
