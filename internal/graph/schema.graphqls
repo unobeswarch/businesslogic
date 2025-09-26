@@ -13,6 +13,19 @@ type ResultadosModelo{
     fechaProcesamiento:String!
 }
 
+type Case {
+    id: ID!
+    pacienteId: ID!
+    pacienteNombre: String!
+    pacienteEmail: String!
+    fechaSubida: String!
+    estado: String!
+    urlRadiografia: String!
+    resultados: ResultadosModelo
+    doctorAsignado: String
+}
+
 type Query{
     getPreDiagnostic(id:ID!):PreDiagnostic
+    getCases: [Case!]!
 }

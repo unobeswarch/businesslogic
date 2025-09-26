@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -26,18 +27,39 @@ func main() {
 		prediagnosticURL = "http://localhost:8000" // URL por defecto
 	}
 
-	// Instanciamos el service con el cliente
+	// Instanciamos los services
 	prediagnosticService := services.NewPrediagnosticService(prediagnosticURL)
+	caseService := services.NewCaseService(prediagnosticURL)
+	authService := services.NewAuthService()
 
-	// Inyectamos el service en el resolver
+	// Inyectamos los services en el resolver
 	resolver := &graph.Resolver{
 		PrediagnosticSrv: prediagnosticService,
+		CaseSrv:          caseService,
+		AuthSrv:          authService,
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 
+	// Middleware para extraer Authorization header y agregarlo al contexto
+	authMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Extraer Authorization header
+			authHeader := r.Header.Get("Authorization")
+			
+			// Agregar al contexto si existe
+			ctx := r.Context()
+			if authHeader != "" {
+				ctx = context.WithValue(ctx, "Authorization", authHeader)
+			}
+			
+			// Continuar con el siguiente handler
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	http.Handle("/query", authMiddleware(srv))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Printf("prediagnostic service URL: %s", prediagnosticURL)
