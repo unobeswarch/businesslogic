@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/unobeswarch/businesslogic/internal/graph/generated"
 	"github.com/unobeswarch/businesslogic/internal/graph/model"
@@ -13,17 +14,8 @@ import (
 
 // GetPreDiagnostic is the resolver for the getPreDiagnostic field.
 func (r *queryResolver) GetPreDiagnostic(ctx context.Context, id string) (*model.PreDiagnostic, error) {
-	return &model.PreDiagnostic{
-		PrediagnosticID: id,
-		PacienteID:      "12345",
-		Urlrad:          "https://storage.example.com/radiography.png",
-		ResultadosModelo: &model.ResultadosModelo{
-			ProbNeumonia:       99.9,
-			Etiqueta:           "Positivo",
-			FechaProcesamiento: "14-09-2025",
-		},
-		FechaSubida: "13-09-2025",
-	}, nil
+	fmt.Println("Buscando prediagnostic con ID:", id)
+	return r.Resolver.PrediagnosticSrv.GetPreDiagnosticByID(id)
 }
 
 // Query returns generated.QueryResolver implementation.
