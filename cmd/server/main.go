@@ -44,15 +44,24 @@ func main() {
 	// Middleware para extraer Authorization header y agregarlo al contexto
 	authMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//CORS headers
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 			// Extraer Authorization header
 			authHeader := r.Header.Get("Authorization")
-			
+
 			// Agregar al contexto si existe
 			ctx := r.Context()
 			if authHeader != "" {
 				ctx = context.WithValue(ctx, "Authorization", authHeader)
 			}
-			
+
 			// Continuar con el siguiente handler
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
