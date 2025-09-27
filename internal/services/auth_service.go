@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
 	"github.com/unobeswarch/businesslogic/internal/models"
 	"golang.org/x/crypto/bcrypt"
@@ -75,9 +76,49 @@ func RegistrarUsuario(u models.User) (int, time.Time, error) {
 	return id, fechaCreacion, nil
 }
 
-func IniciarSesion(correo string, contrasena string) string {
+func IniciarSesion(correo string, contrasena string) (int, string, string, string, error) {
+	db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db")
+	if err != nil {
+		return 0, "", "", "", err
+	}
+	defer db.Close()
 
-	return "login"
+	var (
+		id_usuario         int
+		contrasena_usuario string
+		correo_usuario     string
+		rol_usuario        string
+	)
+
+	query := `SELECT id, correo, contrasena, rol FROM usuarios WHERE correo=$1`
+
+	err = db.QueryRow(query, correo).Scan(&id_usuario, &correo_usuario, &contrasena_usuario, &rol_usuario)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, "", "", "", fmt.Errorf("usuario no encontrado")
+		}
+		return 0, "", "", "", err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(contrasena_usuario), []byte(contrasena))
+	if err != nil {
+		return 0, "", "", "", err
+	}
+
+	var key []byte = []byte("asfqwr1242t1weg")
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id_usuario": id_usuario,
+		"email":      correo_usuario,
+		"rol":        rol_usuario,
+		"exp":        time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	tokenString, err := token.SignedString(key)
+	if err != nil {
+		return 0, "", "", "", err
+	}
+
+	return id_usuario, correo_usuario, rol_usuario, tokenString, nil
 }
 
 type AuthService struct {
@@ -108,7 +149,7 @@ func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader strin
 	}
 
 	token := parts[1]
-	
+
 	// En un escenario real, aquí validarías el JWT contra tu servicio de auth
 	// Por ahora implementamos una validación mock
 	userClaims, err := s.validateJWT(token)
@@ -118,7 +159,7 @@ func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader strin
 
 	// Verificar rol
 	if userClaims.Role != requiredRole {
-		return nil, fmt.Errorf("acceso denegado: se requiere rol %s, pero el usuario tiene rol %s", 
+		return nil, fmt.Errorf("acceso denegado: se requiere rol %s, pero el usuario tiene rol %s",
 			requiredRole, userClaims.Role)
 	}
 
@@ -129,22 +170,22 @@ func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader strin
 func (s *AuthService) validateJWT(token string) (*UserClaims, error) {
 	// Mock validation - en producción aquí validarías el token real
 	// y extraerías los claims del JWT
-	
-	// Para testing, aceptamos tokens con formato específico
-	switch token {
-	case "doctor_token_123":
-		return &UserClaims{
-			UserID: "doctor_1",
-			Email:  "doctor@hospital.com",
-			Role:   "doctor",
-		}, nil
-	case "patient_token_456":
-		return &UserClaims{
-			UserID: "patient_1", 
-			Email:  "patient@email.com",
-			Role:   "patient",
-		}, nil
-	default:
-		return nil, errors.New("token no válido")
+
+	var key []byte = []byte("asfqwr1242t1weg")
+	tkn, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return []byte(key), nil
+	})
+	if err != nil {
+		return nil, err
 	}
+
+	claims := tkn.Claims.(jwt.MapClaims)
+
+	// Para testing, aceptamos tokens con formato específico
+
+	return &UserClaims{
+		UserID: fmt.Sprintf("%v", claims["id_usuario"]),
+		Email:  fmt.Sprintf("%v", claims["email"]),
+		Role:   fmt.Sprintf("%v", claims["rol"]),
+	}, nil
 }
