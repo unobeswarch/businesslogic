@@ -18,6 +18,34 @@ func (r *queryResolver) GetPreDiagnostic(ctx context.Context, id string) (*model
 	return r.Resolver.PrediagnosticSrv.GetPreDiagnosticByID(id)
 }
 
+// GetCases is the resolver for the getCases field.
+func (r *queryResolver) GetCases(ctx context.Context) ([]*model.Case, error) {
+	// Extraer token de autorización del contexto/headers
+	authHeader := ""
+	if authValue := ctx.Value("Authorization"); authValue != nil {
+		if authStr, ok := authValue.(string); ok {
+			authHeader = authStr
+		}
+	}
+
+	// Validar token y rol de doctor
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "doctor")
+	if err != nil {
+		return nil, fmt.Errorf("acceso denegado: %w", err)
+	}
+
+	fmt.Printf("Acceso autorizado para doctor: %s (%s)\n", userClaims.Email, userClaims.UserID)
+
+	// Obtener casos del servicio
+	cases, err := r.Resolver.CaseSrv.GetAllCases()
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo casos: %w", err)
+	}
+
+	fmt.Printf("Se encontraron %d casos\n", len(cases))
+	return cases, nil
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

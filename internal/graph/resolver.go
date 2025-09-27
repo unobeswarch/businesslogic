@@ -9,4 +9,6 @@ import (
 
 type Resolver struct {
 	PrediagnosticSrv *services.PreDiagnosticService
+	CaseSrv          *services.CaseService
+	AuthSrv          *services.AuthService
 }
