@@ -45,6 +45,18 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	Case struct {
+		DoctorAsignado func(childComplexity int) int
+		Estado         func(childComplexity int) int
+		FechaSubida    func(childComplexity int) int
+		ID             func(childComplexity int) int
+		PacienteEmail  func(childComplexity int) int
+		PacienteID     func(childComplexity int) int
+		PacienteNombre func(childComplexity int) int
+		Resultados     func(childComplexity int) int
+		URLRadiografia func(childComplexity int) int
+	}
+
 	PreDiagnostic struct {
 		Estado           func(childComplexity int) int
 		FechaSubida      func(childComplexity int) int
@@ -55,6 +67,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		GetCases         func(childComplexity int) int
 		GetPreDiagnostic func(childComplexity int, id string) int
 	}
 
@@ -67,6 +80,7 @@ type ComplexityRoot struct {
 
 type QueryResolver interface {
 	GetPreDiagnostic(ctx context.Context, id string) (*model.PreDiagnostic, error)
+	GetCases(ctx context.Context) ([]*model.Case, error)
 }
 
 type executableSchema struct {
@@ -87,6 +101,61 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "Case.doctorAsignado":
+		if e.complexity.Case.DoctorAsignado == nil {
+			break
+		}
+
+		return e.complexity.Case.DoctorAsignado(childComplexity), true
+	case "Case.estado":
+		if e.complexity.Case.Estado == nil {
+			break
+		}
+
+		return e.complexity.Case.Estado(childComplexity), true
+	case "Case.fechaSubida":
+		if e.complexity.Case.FechaSubida == nil {
+			break
+		}
+
+		return e.complexity.Case.FechaSubida(childComplexity), true
+	case "Case.id":
+		if e.complexity.Case.ID == nil {
+			break
+		}
+
+		return e.complexity.Case.ID(childComplexity), true
+	case "Case.pacienteEmail":
+		if e.complexity.Case.PacienteEmail == nil {
+			break
+		}
+
+		return e.complexity.Case.PacienteEmail(childComplexity), true
+	case "Case.pacienteId":
+		if e.complexity.Case.PacienteID == nil {
+			break
+		}
+
+		return e.complexity.Case.PacienteID(childComplexity), true
+	case "Case.pacienteNombre":
+		if e.complexity.Case.PacienteNombre == nil {
+			break
+		}
+
+		return e.complexity.Case.PacienteNombre(childComplexity), true
+	case "Case.resultados":
+		if e.complexity.Case.Resultados == nil {
+			break
+		}
+
+		return e.complexity.Case.Resultados(childComplexity), true
+	case "Case.urlRadiografia":
+		if e.complexity.Case.URLRadiografia == nil {
+			break
+		}
+
+		return e.complexity.Case.URLRadiografia(childComplexity), true
 
 	case "PreDiagnostic.estado":
 		if e.complexity.PreDiagnostic.Estado == nil {
@@ -125,6 +194,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreDiagnostic.Urlrad(childComplexity), true
 
+	case "Query.getCases":
+		if e.complexity.Query.GetCases == nil {
+			break
+		}
+
+		return e.complexity.Query.GetCases(childComplexity), true
 	case "Query.getPreDiagnostic":
 		if e.complexity.Query.GetPreDiagnostic == nil {
 			break
@@ -260,8 +335,21 @@ type ResultadosModelo{
     fechaProcesamiento:String!
 }
 
+type Case {
+    id: ID!
+    pacienteId: ID!
+    pacienteNombre: String!
+    pacienteEmail: String!
+    fechaSubida: String!
+    estado: String!
+    urlRadiografia: String!
+    resultados: ResultadosModelo
+    doctorAsignado: String
+}
+
 type Query{
     getPreDiagnostic(id:ID!):PreDiagnostic
+    getCases: [Case!]!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -343,6 +431,275 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _Case_id(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_pacienteId(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_pacienteId,
+		func(ctx context.Context) (any, error) {
+			return obj.PacienteID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_pacienteId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_pacienteNombre(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_pacienteNombre,
+		func(ctx context.Context) (any, error) {
+			return obj.PacienteNombre, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_pacienteNombre(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_pacienteEmail(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_pacienteEmail,
+		func(ctx context.Context) (any, error) {
+			return obj.PacienteEmail, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_pacienteEmail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_fechaSubida(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_fechaSubida,
+		func(ctx context.Context) (any, error) {
+			return obj.FechaSubida, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_fechaSubida(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_estado(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_estado,
+		func(ctx context.Context) (any, error) {
+			return obj.Estado, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_estado(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_urlRadiografia(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_urlRadiografia,
+		func(ctx context.Context) (any, error) {
+			return obj.URLRadiografia, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_urlRadiografia(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_resultados(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_resultados,
+		func(ctx context.Context) (any, error) {
+			return obj.Resultados, nil
+		},
+		nil,
+		ec.marshalOResultadosModelo2ᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐResultadosModelo,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_resultados(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "probNeumonia":
+				return ec.fieldContext_ResultadosModelo_probNeumonia(ctx, field)
+			case "etiqueta":
+				return ec.fieldContext_ResultadosModelo_etiqueta(ctx, field)
+			case "fechaProcesamiento":
+				return ec.fieldContext_ResultadosModelo_fechaProcesamiento(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ResultadosModelo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Case_doctorAsignado(ctx context.Context, field graphql.CollectedField, obj *model.Case) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Case_doctorAsignado,
+		func(ctx context.Context) (any, error) {
+			return obj.DoctorAsignado, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Case_doctorAsignado(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Case",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _PreDiagnostic_prediagnostic_id(ctx context.Context, field graphql.CollectedField, obj *model.PreDiagnostic) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
@@ -577,6 +934,55 @@ func (ec *executionContext) fieldContext_Query_getPreDiagnostic(ctx context.Cont
 	if fc.Args, err = ec.field_Query_getPreDiagnostic_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getCases(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_getCases,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().GetCases(ctx)
+		},
+		nil,
+		ec.marshalNCase2ᚕᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐCaseᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_getCases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Case_id(ctx, field)
+			case "pacienteId":
+				return ec.fieldContext_Case_pacienteId(ctx, field)
+			case "pacienteNombre":
+				return ec.fieldContext_Case_pacienteNombre(ctx, field)
+			case "pacienteEmail":
+				return ec.fieldContext_Case_pacienteEmail(ctx, field)
+			case "fechaSubida":
+				return ec.fieldContext_Case_fechaSubida(ctx, field)
+			case "estado":
+				return ec.fieldContext_Case_estado(ctx, field)
+			case "urlRadiografia":
+				return ec.fieldContext_Case_urlRadiografia(ctx, field)
+			case "resultados":
+				return ec.fieldContext_Case_resultados(ctx, field)
+			case "doctorAsignado":
+				return ec.fieldContext_Case_doctorAsignado(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Case", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -2230,6 +2636,79 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** object.gotpl ****************************
 
+var caseImplementors = []string{"Case"}
+
+func (ec *executionContext) _Case(ctx context.Context, sel ast.SelectionSet, obj *model.Case) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, caseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Case")
+		case "id":
+			out.Values[i] = ec._Case_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pacienteId":
+			out.Values[i] = ec._Case_pacienteId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pacienteNombre":
+			out.Values[i] = ec._Case_pacienteNombre(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pacienteEmail":
+			out.Values[i] = ec._Case_pacienteEmail(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fechaSubida":
+			out.Values[i] = ec._Case_fechaSubida(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "estado":
+			out.Values[i] = ec._Case_estado(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "urlRadiografia":
+			out.Values[i] = ec._Case_urlRadiografia(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resultados":
+			out.Values[i] = ec._Case_resultados(ctx, field, obj)
+		case "doctorAsignado":
+			out.Values[i] = ec._Case_doctorAsignado(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var preDiagnosticImplementors = []string{"PreDiagnostic"}
 
 func (ec *executionContext) _PreDiagnostic(ctx context.Context, sel ast.SelectionSet, obj *model.PreDiagnostic) graphql.Marshaler {
@@ -2323,6 +2802,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_getPreDiagnostic(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getCases":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getCases(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -2763,6 +3264,60 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNCase2ᚕᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐCaseᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Case) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCase2ᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐCase(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCase2ᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐCase(ctx context.Context, sel ast.SelectionSet, v *model.Case) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Case(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3109,6 +3664,13 @@ func (ec *executionContext) marshalOPreDiagnostic2ᚖgithubᚗcomᚋunobeswarch�
 		return graphql.Null
 	}
 	return ec._PreDiagnostic(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOResultadosModelo2ᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐResultadosModelo(ctx context.Context, sel ast.SelectionSet, v *model.ResultadosModelo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ResultadosModelo(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {
