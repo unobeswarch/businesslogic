@@ -104,7 +104,9 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 		return 0, "", "", "", err
 	}
 
-	var key []byte = []byte("asfqwr1242t1weg")
+	var auth AuthService = AuthService{
+		key: []byte("asfqwr1242t1weg"),
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id_usuario": id_usuario,
@@ -113,7 +115,7 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 		"exp":        time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString(key)
+	tokenString, err := token.SignedString(auth.key)
 	if err != nil {
 		return 0, "", "", "", err
 	}
@@ -122,8 +124,7 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 }
 
 type AuthService struct {
-	// En un escenario real, aquí tendrías configuración para validar JWT
-	// Por ahora implementamos una validación básica
+	key []byte
 }
 
 type UserClaims struct {
@@ -150,8 +151,6 @@ func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader strin
 
 	token := parts[1]
 
-	// En un escenario real, aquí validarías el JWT contra tu servicio de auth
-	// Por ahora implementamos una validación mock
 	userClaims, err := s.validateJWT(token)
 	if err != nil {
 		return nil, fmt.Errorf("token inválido: %w", err)
@@ -166,22 +165,19 @@ func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader strin
 	return userClaims, nil
 }
 
-// validateJWT - Mock implementation. En producción usarías una librería JWT real
 func (s *AuthService) validateJWT(token string) (*UserClaims, error) {
-	// Mock validation - en producción aquí validarías el token real
-	// y extraerías los claims del JWT
+	var auth AuthService = AuthService{
+		key: []byte("asfqwr1242t1weg"),
+	}
 
-	var key []byte = []byte("asfqwr1242t1weg")
 	tkn, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(key), nil
+		return auth.key, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	claims := tkn.Claims.(jwt.MapClaims)
-
-	// Para testing, aceptamos tokens con formato específico
 
 	return &UserClaims{
 		UserID: fmt.Sprintf("%v", claims["id_usuario"]),
