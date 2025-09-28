@@ -1,3 +1,5 @@
+scalar Upload
+
 type PreDiagnostic{
     prediagnostic_id: ID!
     pacienteId: ID!
@@ -43,4 +45,5 @@ type Query{
 
 type Mutation {
     createDiagnostic(id_prediagnostico: ID!, input: DiagnosticInput!): DiagnosticResponse!
+    uploadImage(imagen: Upload!): Boolean!
 }

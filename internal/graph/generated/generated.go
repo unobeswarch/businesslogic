@@ -66,6 +66,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateDiagnostic func(childComplexity int, idPrediagnostico string, input model.DiagnosticInput) int
+		UploadImage func(childComplexity int, imagen graphql.Upload) int
 	}
 
 	PreDiagnostic struct {
@@ -91,6 +92,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	CreateDiagnostic(ctx context.Context, idPrediagnostico string, input model.DiagnosticInput) (*model.DiagnosticResponse, error)
+	UploadImage(ctx context.Context, imagen graphql.Upload) (bool, error)
 }
 type QueryResolver interface {
 	GetPreDiagnostic(ctx context.Context, id string) (*model.PreDiagnostic, error)
@@ -172,41 +174,51 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		return e.complexity.Case.URLRadiografia(childComplexity), true
 
 	case "DiagnosticResponse.diagnostic_id":
-		if e.complexity.DiagnosticResponse.DiagnosticID == nil {
-			break
-		}
+    if e.complexity.DiagnosticResponse.DiagnosticID == nil {
+        break
+    }
 
-		return e.complexity.DiagnosticResponse.DiagnosticID(childComplexity), true
-	case "DiagnosticResponse.message":
-		if e.complexity.DiagnosticResponse.Message == nil {
-			break
-		}
+    return e.complexity.DiagnosticResponse.DiagnosticID(childComplexity), true
+case "DiagnosticResponse.message":
+    if e.complexity.DiagnosticResponse.Message == nil {
+        break
+    }
 
-		return e.complexity.DiagnosticResponse.Message(childComplexity), true
-	case "DiagnosticResponse.success":
-		if e.complexity.DiagnosticResponse.Success == nil {
-			break
-		}
+    return e.complexity.DiagnosticResponse.Message(childComplexity), true
+case "DiagnosticResponse.success":
+    if e.complexity.DiagnosticResponse.Success == nil {
+        break
+    }
 
-		return e.complexity.DiagnosticResponse.Success(childComplexity), true
+    return e.complexity.DiagnosticResponse.Success(childComplexity), true
 
-	case "Mutation.createDiagnostic":
-		if e.complexity.Mutation.CreateDiagnostic == nil {
-			break
-		}
+case "Mutation.createDiagnostic":
+    if e.complexity.Mutation.CreateDiagnostic == nil {
+        break
+    }
 
-		args, err := ec.field_Mutation_createDiagnostic_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
+    args, err := ec.field_Mutation_createDiagnostic_args(ctx, rawArgs)
+    if err != nil {
+        return 0, false
+    }
+    return e.complexity.Mutation.CreateDiagnostic(childComplexity, args["id_prediagnostico"].(string), args["input"].(model.DiagnosticInput)), true
 
-		return e.complexity.Mutation.CreateDiagnostic(childComplexity, args["id_prediagnostico"].(string), args["input"].(model.DiagnosticInput)), true
+case "Mutation.uploadImage":
+    if e.complexity.Mutation.UploadImage == nil {
+        break
+    }
+
+    args, err := ec.field_Mutation_uploadImage_args(ctx, rawArgs)
+    if err != nil {
+        return 0, false
+    }
+    return e.complexity.Mutation.UploadImage(childComplexity, args["imagen"].(graphql.Upload)), true
 
 	case "PreDiagnostic.estado":
 		if e.complexity.PreDiagnostic.Estado == nil {
 			break
 		}
-
+    
 		return e.complexity.PreDiagnostic.Estado(childComplexity), true
 	case "PreDiagnostic.fechaSubida":
 		if e.complexity.PreDiagnostic.FechaSubida == nil {
@@ -382,7 +394,9 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../schema.graphqls", Input: `type PreDiagnostic{
+	{Name: "../schema.graphqls", Input: `scalar Upload
+
+type PreDiagnostic{
     prediagnostic_id: ID!
     pacienteId: ID!
     urlrad: String!
@@ -427,6 +441,7 @@ type Query{
 
 type Mutation {
     createDiagnostic(id_prediagnostico: ID!, input: DiagnosticInput!): DiagnosticResponse!
+    uploadImage(imagen: Upload!): Boolean!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -434,6 +449,7 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
 
 func (ec *executionContext) field_Mutation_createDiagnostic_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -448,6 +464,16 @@ func (ec *executionContext) field_Mutation_createDiagnostic_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg1
+  return args, nil
+
+func (ec *executionContext) field_Mutation_uploadImage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "imagen", ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload)
+	if err != nil {
+		return nil, err
+	}
+	args["imagen"] = arg0
 	return args, nil
 }
 
@@ -794,140 +820,182 @@ func (ec *executionContext) fieldContext_Case_doctorAsignado(_ context.Context, 
 	return fc, nil
 }
 
+
 func (ec *executionContext) _DiagnosticResponse_success(ctx context.Context, field graphql.CollectedField, obj *model.DiagnosticResponse) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DiagnosticResponse_success,
-		func(ctx context.Context) (any, error) {
-			return obj.Success, nil
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
+    return graphql.ResolveField(
+        ctx,
+        ec.OperationContext,
+        field,
+        ec.fieldContext_DiagnosticResponse_success,
+        func(ctx context.Context) (any, error) {
+            return obj.Success, nil
+        },
+        nil,
+        ec.marshalNBoolean2bool,
+        true,
+        true,
+    )
 }
 
 func (ec *executionContext) fieldContext_DiagnosticResponse_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DiagnosticResponse",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
+    fc = &graphql.FieldContext{
+        Object:     "DiagnosticResponse",
+        Field:      field,
+        IsMethod:   false,
+        IsResolver: false,
+        Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+            return nil, errors.New("field of type Boolean does not have child fields")
+        },
+    }
+    return fc, nil
 }
 
 func (ec *executionContext) _DiagnosticResponse_message(ctx context.Context, field graphql.CollectedField, obj *model.DiagnosticResponse) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DiagnosticResponse_message,
-		func(ctx context.Context) (any, error) {
-			return obj.Message, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
+    return graphql.ResolveField(
+        ctx,
+        ec.OperationContext,
+        field,
+        ec.fieldContext_DiagnosticResponse_message,
+        func(ctx context.Context) (any, error) {
+            return obj.Message, nil
+        },
+        nil,
+        ec.marshalNString2string,
+        true,
+        true,
+    )
 }
 
 func (ec *executionContext) fieldContext_DiagnosticResponse_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DiagnosticResponse",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
+    fc = &graphql.FieldContext{
+        Object:     "DiagnosticResponse",
+        Field:      field,
+        IsMethod:   false,
+        IsResolver: false,
+        Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+            return nil, errors.New("field of type String does not have child fields")
+        },
+    }
+    return fc, nil
 }
 
 func (ec *executionContext) _DiagnosticResponse_diagnostic_id(ctx context.Context, field graphql.CollectedField, obj *model.DiagnosticResponse) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DiagnosticResponse_diagnostic_id,
-		func(ctx context.Context) (any, error) {
-			return obj.DiagnosticID, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
+    return graphql.ResolveField(
+        ctx,
+        ec.OperationContext,
+        field,
+        ec.fieldContext_DiagnosticResponse_diagnostic_id,
+        func(ctx context.Context) (any, error) {
+            return obj.DiagnosticID, nil
+        },
+        nil,
+        ec.marshalOString2ᚖstring,
+        true,
+        false,
+    )
 }
 
 func (ec *executionContext) fieldContext_DiagnosticResponse_diagnostic_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DiagnosticResponse",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
+    fc = &graphql.FieldContext{
+        Object:     "DiagnosticResponse",
+        Field:      field,
+        IsMethod:   false,
+        IsResolver: false,
+        Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+            return nil, errors.New("field of type String does not have child fields")
+        },
+    }
+    return fc, nil
 }
 
 func (ec *executionContext) _Mutation_createDiagnostic(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_createDiagnostic,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateDiagnostic(ctx, fc.Args["id_prediagnostico"].(string), fc.Args["input"].(model.DiagnosticInput))
-		},
-		nil,
-		ec.marshalNDiagnosticResponse2ᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐDiagnosticResponse,
-		true,
-		true,
-	)
+    return graphql.ResolveField(
+        ctx,
+        ec.OperationContext,
+        field,
+        ec.fieldContext_Mutation_createDiagnostic,
+        func(ctx context.Context) (any, error) {
+            fc := graphql.GetFieldContext(ctx)
+            return ec.resolvers.Mutation().CreateDiagnostic(ctx, fc.Args["id_prediagnostico"].(string), fc.Args["input"].(model.DiagnosticInput))
+        },
+        nil,
+        ec.marshalNDiagnosticResponse2ᚖgithubᚗcomᚋunobeswarchᚋbusinesslogicᚋinternalᚋgraphᚋmodelᚐDiagnosticResponse,
+        true,
+        true,
+    )
+}
+
+func (ec *executionContext) _Mutation_uploadImage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+    return graphql.ResolveField(
+        ctx,
+        ec.OperationContext,
+        field,
+        ec.fieldContext_Mutation_uploadImage,
+        func(ctx context.Context) (any, error) {
+            fc := graphql.GetFieldContext(ctx)
+            return ec.resolvers.Mutation().UploadImage(ctx, fc.Args["imagen"].(graphql.Upload))
+        },
+        nil,
+        ec.marshalNBoolean2bool,
+        true,
+        true,
+    )
 }
 
 func (ec *executionContext) fieldContext_Mutation_createDiagnostic(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "success":
-				return ec.fieldContext_DiagnosticResponse_success(ctx, field)
-			case "message":
-				return ec.fieldContext_DiagnosticResponse_message(ctx, field)
-			case "diagnostic_id":
-				return ec.fieldContext_DiagnosticResponse_diagnostic_id(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type DiagnosticResponse", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createDiagnostic_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
+    fc = &graphql.FieldContext{
+        Object:     "Mutation",
+        Field:      field,
+        IsMethod:   true,
+        IsResolver: true,
+        Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+            switch field.Name {
+            case "success":
+                return ec.fieldContext_DiagnosticResponse_success(ctx, field)
+            case "message":
+                return ec.fieldContext_DiagnosticResponse_message(ctx, field)
+            case "diagnostic_id":
+                return ec.fieldContext_DiagnosticResponse_diagnostic_id(ctx, field)
+            }
+            return nil, fmt.Errorf("no field named %q was found under type DiagnosticResponse", field.Name)
+        },
+    }
+    defer func() {
+        if r := recover(); r != nil {
+            err = ec.Recover(ctx, r)
+            ec.Error(ctx, err)
+        }
+    }()
+    ctx = graphql.WithFieldContext(ctx, fc)
+    if fc.Args, err = ec.field_Mutation_createDiagnostic_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+        ec.Error(ctx, err)
+        return fc, err
+    }
+    return fc, nil
+}
+
+func (ec *executionContext) fieldContext_Mutation_uploadImage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+    fc = &graphql.FieldContext{
+        Object:     "Mutation",
+        Field:      field,
+        IsMethod:   true,
+        IsResolver: true,
+        Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+            return nil, errors.New("field of type Boolean does not have child fields")
+        },
+    }
+    defer func() {
+        if r := recover(); r != nil {
+            err = ec.Recover(ctx, r)
+            ec.Error(ctx, err)
+        }
+    }()
+    ctx = graphql.WithFieldContext(ctx, fc)
+    if fc.Args, err = ec.field_Mutation_uploadImage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+        ec.Error(ctx, err)
+        return fc, err
+    }
+    return fc, nil
 }
 
 func (ec *executionContext) _PreDiagnostic_prediagnostic_id(ctx context.Context, field graphql.CollectedField, obj *model.PreDiagnostic) (ret graphql.Marshaler) {
@@ -2975,50 +3043,49 @@ func (ec *executionContext) _Case(ctx context.Context, sel ast.SelectionSet, obj
 var diagnosticResponseImplementors = []string{"DiagnosticResponse"}
 
 func (ec *executionContext) _DiagnosticResponse(ctx context.Context, sel ast.SelectionSet, obj *model.DiagnosticResponse) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, diagnosticResponseImplementors)
+    fields := graphql.CollectFields(ec.OperationContext, sel, diagnosticResponseImplementors)
 
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DiagnosticResponse")
-		case "success":
-			out.Values[i] = ec._DiagnosticResponse_success(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "message":
-			out.Values[i] = ec._DiagnosticResponse_message(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "diagnostic_id":
-			out.Values[i] = ec._DiagnosticResponse_diagnostic_id(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
+    out := graphql.NewFieldSet(fields)
+    deferred := make(map[string]*graphql.FieldSet)
+    for i, field := range fields {
+        switch field.Name {
+        case "__typename":
+            out.Values[i] = graphql.MarshalString("DiagnosticResponse")
+        case "success":
+            out.Values[i] = ec._DiagnosticResponse_success(ctx, field, obj)
+            if out.Values[i] == graphql.Null {
+                out.Invalids++
+            }
+        case "message":
+            out.Values[i] = ec._DiagnosticResponse_message(ctx, field, obj)
+            if out.Values[i] == graphql.Null {
+                out.Invalids++
+            }
+        case "diagnostic_id":
+            out.Values[i] = ec._DiagnosticResponse_diagnostic_id(ctx, field, obj)
+        default:
+            panic("unknown field " + strconv.Quote(field.Name))
+        }
+    }
+    out.Dispatch(ctx)
+    if out.Invalids > 0 {
+        return graphql.Null
+    }
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+    atomic.AddInt32(&ec.deferred, int32(len(deferred)))
 
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
+    for label, dfs := range deferred {
+        ec.processDeferredGroup(graphql.DeferredGroup{
+            Label:    label,
+            Path:     graphql.GetPath(ctx),
+            FieldSet: dfs,
+            Context:  ctx,
+        })
+    }
 
-	return out
+    return out
 }
-
-var mutationImplementors = []string{"Mutation"}
+  var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
@@ -3037,21 +3104,28 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
-		case "createDiagnostic":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createDiagnostic(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
+        case "createDiagnostic":
+            out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+                return ec._Mutation_createDiagnostic(ctx, field)
+            })
+            if out.Values[i] == graphql.Null {
+                out.Invalids++
+            }
+        case "uploadImage":
+            out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+                return ec._Mutation_uploadImage(ctx, field)
+            })
+            if out.Values[i] == graphql.Null {
+                out.Invalids++
+            }
+        default:
+            panic("unknown field " + strconv.Quote(field.Name))
+        }
+    }
+    out.Dispatch(ctx)
+    if out.Invalids > 0 {
+        return graphql.Null
+    }
 
 	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
 
@@ -3745,6 +3819,22 @@ func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) 
 func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	_ = sel
 	res := graphql.MarshalString(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx context.Context, v any) (graphql.Upload, error) {
+	res, err := graphql.UnmarshalUpload(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx context.Context, sel ast.SelectionSet, v graphql.Upload) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalUpload(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
