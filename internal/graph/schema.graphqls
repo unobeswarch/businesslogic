@@ -25,7 +25,22 @@ type Case {
     doctorAsignado: String
 }
 
+input DiagnosticInput {
+    aprobacion: String!
+    comentario: String!
+}
+
+type DiagnosticResponse {
+    success: Boolean!
+    message: String!
+    diagnostic_id: String
+}
+
 type Query{
     getPreDiagnostic(id:ID!):PreDiagnostic
     getCases: [Case!]!
+}
+
+type Mutation {
+    createDiagnostic(id_prediagnostico: ID!, input: DiagnosticInput!): DiagnosticResponse!
 }
