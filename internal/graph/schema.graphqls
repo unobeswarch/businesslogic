@@ -1,3 +1,5 @@
+scalar Upload
+
 type PreDiagnostic{
     prediagnostic_id: ID!
     pacienteId: ID!
@@ -28,4 +30,8 @@ type Case {
 type Query{
     getPreDiagnostic(id:ID!):PreDiagnostic
     getCases: [Case!]!
+}
+
+type Mutation {
+    uploadImage(imagen: Upload!): Boolean!
 }
