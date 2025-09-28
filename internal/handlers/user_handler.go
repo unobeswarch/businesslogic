@@ -75,11 +75,33 @@ func HandlerRegistrarUsuario(w http.ResponseWriter, r *http.Request) {
 func HandlerIniciarSesion(w http.ResponseWriter, r *http.Request) {
 
 	var datos map[string]interface{}
-	json.NewDecoder(r.Body).Decode(&datos)
+
+	err := json.NewDecoder(r.Body).Decode(&datos)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Problema durante la conversion del JSON",
+		})
+		return
+	}
+
+	id, correo, rol, token, err := services.IniciarSesion(datos["correo"].(string), datos["contrasena"].(string))
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"mensaje": services.IniciarSesion(datos["correo"].(string), datos["contrasena"].(string)),
+		"token":   token,
+		"rol":     rol,
+		"user_id": id,
+		"correo":  correo,
 	})
 }
