@@ -100,13 +100,21 @@ func (c *PreDiagnosticClient) GetCases() ([]map[string]interface{}, error) {
 }
 
 // CreateDiagnostic envía una solicitud POST para crear un diagnóstico
-func (c *PreDiagnosticClient) CreateDiagnostic(prediagnosticID string, aprobacion bool, comentario string) (map[string]interface{}, error) {
+func (c *PreDiagnosticClient) CreateDiagnostic(prediagnosticID, aprobacion, comentario string) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/prediagnostic/diagnostic/%s", c.BaseURL, prediagnosticID)
+
+	// Convertir "Si"/"No" a boolean para el servicio externo
+	var aprobacionBool bool
+	if aprobacion == "Si" {
+		aprobacionBool = true
+	} else {
+		aprobacionBool = false
+	}
 
 	// Preparar el payload
 	payload := map[string]interface{}{
 		"prediagnostic_id": prediagnosticID,
-		"aprobacion":       aprobacion, // Ahora enviamos el booleano directamente
+		"aprobacion":       aprobacionBool, // Enviamos boolean al servicio externo
 		"comentario":       comentario,
 		"fecha_revision":   fmt.Sprintf("%d", time.Now().Unix()), // timestamp actual
 	}

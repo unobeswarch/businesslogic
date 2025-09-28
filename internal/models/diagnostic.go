@@ -13,7 +13,7 @@ type Diagnostic struct {
 
 // DiagnosticInput representa los datos de entrada para crear un diagnóstico
 type DiagnosticInput struct {
-	Aprobacion bool   `json:"aprobacion" validate:"required"`
+	Aprobacion string `json:"aprobacion" validate:"required,oneof=Si No"`
 	Comentario string `json:"comentario" validate:"required"`
 }
 

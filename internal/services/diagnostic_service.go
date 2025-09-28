@@ -18,8 +18,15 @@ func NewDiagnosticService(baseURL string) *DiagnosticService {
 }
 
 // CreateDiagnostic procesa la creación de un diagnóstico
-func (s *DiagnosticService) CreateDiagnostic(prediagnosticID string, aprobacion bool, comentario string) (*models.DiagnosticResponse, error) {
+func (s *DiagnosticService) CreateDiagnostic(prediagnosticID, aprobacion, comentario string) (*models.DiagnosticResponse, error) {
 	// Validar entrada
+	if aprobacion != "Si" && aprobacion != "No" {
+		return &models.DiagnosticResponse{
+			Success: false,
+			Message: "La aprobación debe ser 'Si' o 'No'",
+		}, nil
+	}
+
 	if comentario == "" {
 		return &models.DiagnosticResponse{
 			Success: false,
@@ -27,7 +34,7 @@ func (s *DiagnosticService) CreateDiagnostic(prediagnosticID string, aprobacion 
 		}, nil
 	}
 
-	// Enviar solicitud al servicio de prediagnóstico (ahora pasamos el booleano directamente)
+	// Enviar solicitud al servicio de prediagnóstico
 	result, err := s.client.CreateDiagnostic(prediagnosticID, aprobacion, comentario)
 	if err != nil {
 		return &models.DiagnosticResponse{

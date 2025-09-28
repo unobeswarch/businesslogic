@@ -410,7 +410,7 @@ type Case {
 }
 
 input DiagnosticInput {
-    aprobacion: Boolean!
+    aprobacion: String!
     comentario: String!
 }
 
@@ -2873,7 +2873,7 @@ func (ec *executionContext) unmarshalInputDiagnosticInput(ctx context.Context, o
 		switch k {
 		case "aprobacion":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aprobacion"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}

@@ -15,7 +15,7 @@ type Case struct {
 }
 
 type DiagnosticInput struct {
-	Aprobacion bool   `json:"aprobacion"`
+	Aprobacion string `json:"aprobacion"`
 	Comentario string `json:"comentario"`
 }
 
