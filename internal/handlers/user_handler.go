@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/unobeswarch/businesslogic/internal/models"
@@ -53,11 +54,14 @@ func HandlerRegistrarUsuario(w http.ResponseWriter, r *http.Request) {
 				"mensaje": "Debe aceptar el tratamiento de datos personales",
 			})
 		default:
+			// Log del error específico para depuración
+			fmt.Printf("Error específico durante registro: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":        "INTERNAL_ERROR",
-				"mensaje":      "Error interno del servidor",
-				"codigo_error": "REG_001",
+				"error":         "INTERNAL_ERROR",
+				"mensaje":       "Error interno del servidor",
+				"codigo_error":  "REG_001",
+				"error_detalle": err.Error(),
 			})
 		}
 		return

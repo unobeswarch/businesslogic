@@ -14,6 +14,16 @@ type Case struct {
 	DoctorAsignado *string           `json:"doctorAsignado,omitempty"`
 }
 
+type DiagnosticInput struct {
+    Aprobacion string `json:"aprobacion"`
+    Comentario string `json:"comentario"`
+}
+
+type DiagnosticResponse struct {
+    Success      bool    `json:"success"`
+    Message      string  `json:"message"`
+    DiagnosticID *string `json:"diagnostic_id,omitempty"`
+}
 type Mutation struct {
 }
 
