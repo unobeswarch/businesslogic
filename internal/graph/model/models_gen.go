@@ -14,6 +14,9 @@ type Case struct {
 	DoctorAsignado *string           `json:"doctorAsignado,omitempty"`
 }
 
+type Mutation struct {
+}
+
 type PreDiagnostic struct {
 	PrediagnosticID  string            `json:"prediagnostic_id"`
 	PacienteID       string            `json:"pacienteId"`
