@@ -14,6 +14,20 @@ type Case struct {
 	DoctorAsignado *string           `json:"doctorAsignado,omitempty"`
 }
 
+type DiagnosticInput struct {
+	Aprobacion bool   `json:"aprobacion"`
+	Comentario string `json:"comentario"`
+}
+
+type DiagnosticResponse struct {
+	Success      bool    `json:"success"`
+	Message      string  `json:"message"`
+	DiagnosticID *string `json:"diagnostic_id,omitempty"`
+}
+
+type Mutation struct {
+}
+
 type PreDiagnostic struct {
 	PrediagnosticID  string            `json:"prediagnostic_id"`
 	PacienteID       string            `json:"pacienteId"`

@@ -29,7 +29,7 @@ func RegistrarUsuario(u models.User) (int, time.Time, error) {
 		return 0, time.Time{}, ErrTratamientoDatos
 	}
 
-	db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db")
+	db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
 	if err != nil {
 		return 0, time.Time{}, err
 	}
@@ -77,7 +77,7 @@ func RegistrarUsuario(u models.User) (int, time.Time, error) {
 }
 
 func IniciarSesion(correo string, contrasena string) (int, string, string, string, error) {
-	db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db")
+	db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
 	if err != nil {
 		return 0, "", "", "", err
 	}

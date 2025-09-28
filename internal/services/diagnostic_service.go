@@ -18,15 +18,8 @@ func NewDiagnosticService(baseURL string) *DiagnosticService {
 }
 
 // CreateDiagnostic procesa la creación de un diagnóstico
-func (s *DiagnosticService) CreateDiagnostic(prediagnosticID, aprobacion, comentario string) (*models.DiagnosticResponse, error) {
+func (s *DiagnosticService) CreateDiagnostic(prediagnosticID string, aprobacion bool, comentario string) (*models.DiagnosticResponse, error) {
 	// Validar entrada
-	if aprobacion != "Si" && aprobacion != "No" {
-		return &models.DiagnosticResponse{
-			Success: false,
-			Message: "La aprobación debe ser 'Si' o 'No'",
-		}, nil
-	}
-
 	if comentario == "" {
 		return &models.DiagnosticResponse{
 			Success: false,
@@ -34,7 +27,7 @@ func (s *DiagnosticService) CreateDiagnostic(prediagnosticID, aprobacion, coment
 		}, nil
 	}
 
-	// Enviar solicitud al servicio de prediagnóstico
+	// Enviar solicitud al servicio de prediagnóstico (ahora pasamos el booleano directamente)
 	result, err := s.client.CreateDiagnostic(prediagnosticID, aprobacion, comentario)
 	if err != nil {
 		return &models.DiagnosticResponse{
@@ -46,12 +39,20 @@ func (s *DiagnosticService) CreateDiagnostic(prediagnosticID, aprobacion, coment
 	// Procesar respuesta
 	success, ok := result["success"].(bool)
 	if !ok {
+		// Si no hay campo "success", inferir el éxito basado en el mensaje
 		success = false
 	}
 
 	message, ok := result["message"].(string)
 	if !ok {
 		message = "Diagnóstico procesado"
+	}
+
+	// Si el mensaje indica éxito pero success es false, corregir
+	if !success && (message == "Diagnostic saved successfully" || 
+		message == "Diagnóstico guardado exitosamente" ||
+		message == "Diagnostic created successfully") {
+		success = true
 	}
 
 	diagnosticID, _ := result["diagnostic_id"].(string)
