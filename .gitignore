@@ -1,0 +1,30 @@
+# Binarios compilados
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Archivos temporales de Go
+*.test
+*.prof
+
+# Logs
+*.log
+
+# Archivos de desarrollo
+.env
+.env.local
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage reports
+*.coverprofile
+coverage.html

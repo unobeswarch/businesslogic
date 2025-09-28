@@ -464,7 +464,8 @@ func (ec *executionContext) field_Mutation_createDiagnostic_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg1
-  return args, nil
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_uploadImage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
