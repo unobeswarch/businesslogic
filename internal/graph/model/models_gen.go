@@ -3,15 +3,15 @@
 package model
 
 type Case struct {
-	ID              string            `json:"id"`
-	PacienteID      string            `json:"pacienteId"`
-	PacienteNombre  string            `json:"pacienteNombre"`
-	PacienteEmail   string            `json:"pacienteEmail"`
-	FechaSubida     string            `json:"fechaSubida"`
-	Estado          string            `json:"estado"`
-	URLRadiografia  string            `json:"urlRadiografia"`
-	Resultados      *ResultadosModelo `json:"resultados"`
-	DoctorAsignado  *string           `json:"doctorAsignado"`
+	ID             string            `json:"id"`
+	PacienteID     string            `json:"pacienteId"`
+	PacienteNombre string            `json:"pacienteNombre"`
+	PacienteEmail  string            `json:"pacienteEmail"`
+	FechaSubida    string            `json:"fechaSubida"`
+	Estado         string            `json:"estado"`
+	URLRadiografia string            `json:"urlRadiografia"`
+	Resultados     *ResultadosModelo `json:"resultados"`
+	DoctorAsignado *string           `json:"doctorAsignado"`
 }
 
 type PreDiagnostic struct {
@@ -23,11 +23,31 @@ type PreDiagnostic struct {
 	FechaSubida      string            `json:"fechaSubida"`
 }
 
-type Query struct {
-}
+type Query struct{}
 
 type ResultadosModelo struct {
 	ProbNeumonia       float64 `json:"probNeumonia"`
 	Etiqueta           string  `json:"etiqueta"`
 	FechaProcesamiento string  `json:"fechaProcesamiento"`
+}
+
+// CaseDetail type for HU7 - specific radiograph detail view
+type CaseDetail struct {
+	ID            string         `json:"id"`
+	RadiografiaID string         `json:"radiografiaId"`
+	URLImagen     string         `json:"urlImagen"`
+	Estado        string         `json:"estado"`
+	FechaSubida   string         `json:"fechaSubida"`
+	PreDiagnostic *PreDiagnostic `json:"preDiagnostic"`
+	Diagnostic    *Diagnostic    `json:"diagnostic"`
+}
+
+// Diagnostic type for medical diagnosis information
+type Diagnostic struct {
+	ID               string  `json:"id"`
+	PrediagnosticoID string  `json:"prediagnosticoId"`
+	Aprobacion       string  `json:"aprobacion"`
+	Comentarios      string  `json:"comentarios"`
+	FechaRevision    string  `json:"fechaRevision"`
+	DoctorNombre     *string `json:"doctorNombre"`
 }
