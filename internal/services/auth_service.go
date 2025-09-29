@@ -81,7 +81,7 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 	// db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
 	db, err := sql.Open("postgres", "postgres://postgres:BDatosPost0912%2B@localhost:5432/blogic_db?sslmode=disable")
 	if err != nil {
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 	defer db.Close()
 
@@ -90,20 +90,21 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 		contrasena_usuario string
 		correo_usuario     string
 		rol_usuario        string
+		nombre_completo    string
 	)
 
-	query := `SELECT id, correo, contrasena, rol FROM usuarios WHERE correo=$1`
+	query := `SELECT nombre_completo, id, correo, contrasena, rol FROM usuarios WHERE correo=$1`
 
-	err = db.QueryRow(query, correo).Scan(&id_usuario, &correo_usuario, &contrasena_usuario, &rol_usuario)
+	err = db.QueryRow(query, correo).Scan(&nombre_completo, &id_usuario, &correo_usuario, &contrasena_usuario, &rol_usuario)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0, "", "", "", fmt.Errorf("usuario no encontrado")
+			return "", 0, "", "", "", fmt.Errorf("usuario no encontrado")
 		}
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(contrasena_usuario), []byte(contrasena))
 	if err != nil {
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 
 	var auth AuthService = AuthService{
@@ -111,18 +112,19 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id_usuario": id_usuario,
-		"email":      correo_usuario,
-		"rol":        rol_usuario,
-		"exp":        time.Now().Add(time.Hour * 24).Unix(),
+		"id_usuario":      id_usuario,
+		"email":           correo_usuario,
+		"rol":             rol_usuario,
+		"nombre_completo": nombre_completo,
+		"exp":             time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	tokenString, err := token.SignedString(auth.key)
 	if err != nil {
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 
-	return id_usuario, correo_usuario, rol_usuario, tokenString, nil
+	return nombre_completo, id_usuario, correo_usuario, rol_usuario, tokenString, nil
 }
 
 type AuthService struct {
@@ -133,6 +135,7 @@ type UserClaims struct {
 	UserID string
 	Email  string
 	Role   string
+	Name   string
 }
 
 func NewAuthService() *AuthService {
@@ -153,7 +156,7 @@ func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader strin
 
 	token := parts[1]
 
-	userClaims, err := s.validateJWT(token)
+	userClaims, err := s.ValidateJWT(token)
 	if err != nil {
 		return nil, fmt.Errorf("token inválido: %w", err)
 	}
@@ -167,7 +170,7 @@ func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader strin
 	return userClaims, nil
 }
 
-func (s *AuthService) validateJWT(token string) (*UserClaims, error) {
+func (s *AuthService) ValidateJWT(token string) (*UserClaims, error) {
 	var auth AuthService = AuthService{
 		key: []byte("asfqwr1242t1weg"),
 	}
@@ -185,5 +188,6 @@ func (s *AuthService) validateJWT(token string) (*UserClaims, error) {
 		UserID: fmt.Sprintf("%v", claims["id_usuario"]),
 		Email:  fmt.Sprintf("%v", claims["email"]),
 		Role:   fmt.Sprintf("%v", claims["rol"]),
+		Name:   fmt.Sprintf("%v", claims["nombre_completo"]),
 	}, nil
 }

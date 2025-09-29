@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/unobeswarch/businesslogic/internal/models"
 	"github.com/unobeswarch/businesslogic/internal/services"
@@ -77,6 +78,14 @@ func HandlerRegistrarUsuario(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandlerIniciarSesion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Metodo no permitido",
+		})
+		return
+	}
 
 	var datos map[string]interface{}
 
@@ -90,7 +99,7 @@ func HandlerIniciarSesion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, correo, rol, token, err := services.IniciarSesion(datos["correo"].(string), datos["contrasena"].(string))
+	nombre, id, correo, rol, token, err := services.IniciarSesion(datos["correo"].(string), datos["contrasena"].(string))
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -103,9 +112,53 @@ func HandlerIniciarSesion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
+		"nombre":  nombre,
 		"token":   token,
 		"rol":     rol,
 		"user_id": id,
 		"correo":  correo,
 	})
+}
+
+func HandlerValidacion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Metodo no permitido",
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, `{"error": "token de autorización requerido"}`, http.StatusUnauthorized)
+		return
+	}
+
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		http.Error(w, `{"error": "formato de token inválido"}`, http.StatusUnauthorized)
+		return
+	}
+	token := parts[1]
+
+	authService := services.NewAuthService()
+	claims, err := authService.ValidateJWT(token)
+
+	if err != nil {
+		http.Error(w, `{"error": "token inválido"}`, http.StatusUnauthorized)
+		return
+	}
+
+	resp := services.UserClaims{
+		UserID: claims.UserID,
+		Email:  claims.Email,
+		Role:   claims.Role,
+		Name:   claims.Name,
+	}
+
+	json.NewEncoder(w).Encode(resp)
 }
