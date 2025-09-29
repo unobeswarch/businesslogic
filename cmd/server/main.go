@@ -74,6 +74,7 @@ func main() {
 	http.Handle("/query", authMiddleware(srv))
 	http.Handle("/register", authMiddleware(http.HandlerFunc(handlers.HandlerRegistrarUsuario)))
 	http.Handle("/auth", authMiddleware(http.HandlerFunc(handlers.HandlerIniciarSesion)))
+	http.Handle("/validation", authMiddleware(http.HandlerFunc(handlers.HandlerValidacion)))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Printf("prediagnostic service URL: %s", prediagnosticURL)
