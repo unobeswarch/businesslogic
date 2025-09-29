@@ -1,3 +1,5 @@
+scalar Upload
+
 type PreDiagnostic{
     prediagnostic_id: ID!
     pacienteId: ID!
@@ -23,6 +25,17 @@ type Case {
     urlRadiografia: String!
     resultados: ResultadosModelo
     doctorAsignado: String
+}
+
+input DiagnosticInput {
+    aprobacion: String!
+    comentario: String!
+}
+
+type DiagnosticResponse {
+    success: Boolean!
+    message: String!
+    diagnostic_id: String
 }
 
 type Query{
@@ -59,4 +72,9 @@ type Diagnostic {
     comentarios: String!         # Maps to "diagnostico" field in DB
     fechaRevision: String!       # Maps to "fecha_validacion" field
     doctorNombre: String         # Maps to "doctor_nombre" field
+}
+
+type Mutation {
+    createDiagnostic(id_prediagnostico: ID!, input: DiagnosticInput!): DiagnosticResponse!
+    uploadImage(imagen: Upload!): Boolean!
 }

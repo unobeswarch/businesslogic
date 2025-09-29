@@ -10,9 +10,22 @@ type Case struct {
 	FechaSubida    string            `json:"fechaSubida"`
 	Estado         string            `json:"estado"`
 	URLRadiografia string            `json:"urlRadiografia"`
-	Resultados     *ResultadosModelo `json:"resultados"`
-	DoctorAsignado *string           `json:"doctorAsignado"`
+	Resultados     *ResultadosModelo `json:"resultados,omitempty"`
+	DoctorAsignado *string           `json:"doctorAsignado,omitempty"`
 }
+
+type DiagnosticInput struct {
+	Aprobacion string `json:"aprobacion"`
+	Comentario string `json:"comentario"`
+}
+
+type DiagnosticResponse struct {
+	Success      bool    `json:"success"`
+	Message      string  `json:"message"`
+	DiagnosticID *string `json:"diagnostic_id,omitempty"`
+}
+
+type Mutation struct{}
 
 type PreDiagnostic struct {
 	PrediagnosticID  string            `json:"prediagnostic_id"`

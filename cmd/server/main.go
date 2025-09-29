@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/unobeswarch/businesslogic/internal/graph"
 	"github.com/unobeswarch/businesslogic/internal/graph/generated"
+	"github.com/unobeswarch/businesslogic/internal/handlers"
 	"github.com/unobeswarch/businesslogic/internal/services"
 )
 
@@ -31,12 +32,14 @@ func main() {
 	prediagnosticService := services.NewPrediagnosticService(prediagnosticURL)
 	caseService := services.NewCaseService(prediagnosticURL)
 	authService := services.NewAuthService()
+	diagnosticService := services.NewDiagnosticService(prediagnosticURL)
 
 	// Inyectamos los services en el resolver
 	resolver := &graph.Resolver{
 		PrediagnosticSrv: prediagnosticService,
 		CaseSrv:          caseService,
 		AuthSrv:          authService,
+		DiagnosticSrv:    diagnosticService,
 	}
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
@@ -68,7 +71,9 @@ func main() {
 	}
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", authMiddleware(srv))
+  http.Handle("/query", authMiddleware(srv))
+  http.HandleFunc("/register", handlers.HandlerRegistrarUsuario)
+  http.HandleFunc("/auth", handlers.HandlerIniciarSesion)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Printf("prediagnostic service URL: %s", prediagnosticURL)
