@@ -1,1 +1,325 @@
 package services
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/unobeswarch/businesslogic/internal/clients"
+	"github.com/unobeswarch/businesslogic/internal/graph/model"
+)
+
+type CaseService struct {
+	prediagnosticClient *clients.PreDiagnosticClient
+}
+
+func NewCaseService(prediagnosticURL string) *CaseService {
+	return &CaseService{
+		prediagnosticClient: clients.NewPrediagnosticClient(prediagnosticURL),
+	}
+}
+
+// GetAllCases obtiene todos los casos y los procesa/estandariza
+func (s *CaseService) GetAllCases() ([]*model.Case, error) {
+	// Obtener datos raw del servicio prediagnostic
+	rawCases, err := s.prediagnosticClient.GetCases()
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo casos del servicio prediagnostic: %w", err)
+	}
+
+	// Procesar y estandarizar los datos
+	var cases []*model.Case
+	for _, rawCase := range rawCases {
+		processedCase, err := s.processAndStandardizeCase(rawCase)
+		if err != nil {
+			// Log error pero continúa procesando otros casos
+			fmt.Printf("Error procesando caso: %v\n", err)
+			continue
+		}
+		cases = append(cases, processedCase)
+	}
+
+	return cases, nil
+}
+
+// processAndStandardizeCase transforma los datos raw en formato legible y estandarizado
+func (s *CaseService) processAndStandardizeCase(rawCase map[string]interface{}) (*model.Case, error) {
+	// Extraer ID del caso
+	caseID, ok := rawCase["id"].(string)
+	if !ok {
+		if idFloat, isFloat := rawCase["id"].(float64); isFloat {
+			caseID = fmt.Sprintf("%.0f", idFloat)
+		} else {
+			return nil, fmt.Errorf("ID del caso no válido")
+		}
+	}
+
+	// Extraer ID del paciente
+	pacienteID, ok := rawCase["user_id"].(string)
+	if !ok {
+		if idFloat, isFloat := rawCase["user_id"].(float64); isFloat {
+			pacienteID = fmt.Sprintf("%.0f", idFloat)
+		} else {
+			return nil, fmt.Errorf("ID del paciente no válido")
+		}
+	}
+
+	// Extraer información del paciente
+	pacienteNombre := s.extractStringField(rawCase, "paciente_nombre", "Nombre no disponible")
+	pacienteEmail := s.extractStringField(rawCase, "paciente_email", "Email no disponible")
+
+	// Extraer fecha de subida y formatearla
+	fechaSubida := s.processDate(rawCase["fecha_subida"])
+
+	// Extraer y procesar estado
+	estado := s.processStatus(rawCase["estado"])
+
+	// Extraer URL de radiografía
+	urlRadiografia := s.extractStringField(rawCase, "radiografia_url", "")
+
+	// Extraer doctor asignado (puede ser nil)
+	doctorAsignado := s.extractStringField(rawCase, "doctor_asignado", "")
+
+	// Procesar resultados del modelo si existen
+	var resultados *model.ResultadosModelo
+	if resultadosRaw, exists := rawCase["resultado_modelo"]; exists && resultadosRaw != nil {
+		if resultadosMap, ok := resultadosRaw.(map[string]interface{}); ok {
+			resultados = &model.ResultadosModelo{
+				ProbNeumonia:       s.extractFloatField(resultadosMap, "probabilidad_neumonia"),
+				Etiqueta:           s.processLabel(resultadosMap["etiqueta"]),
+				FechaProcesamiento: s.processDate(rawCase["fecha_procesamiento"]),
+			}
+		}
+	}
+
+	return &model.Case{
+		ID:             caseID,
+		PacienteID:     pacienteID,
+		PacienteNombre: pacienteNombre,
+		PacienteEmail:  pacienteEmail,
+		FechaSubida:    fechaSubida,
+		Estado:         estado,
+		URLRadiografia: urlRadiografia,
+		Resultados:     resultados,
+		DoctorAsignado: &doctorAsignado,
+	}, nil
+}
+
+// Funciones auxiliares para extraer y procesar campos
+
+func (s *CaseService) extractStringField(data map[string]interface{}, field string, defaultValue string) string {
+	if value, exists := data[field]; exists && value != nil {
+		if strValue, ok := value.(string); ok {
+			return strValue
+		}
+	}
+	return defaultValue
+}
+
+func (s *CaseService) extractFloatField(data map[string]interface{}, field string) float64 {
+	if value, exists := data[field]; exists && value != nil {
+		if floatValue, ok := value.(float64); ok {
+			return floatValue
+		}
+	}
+	return 0.0
+}
+
+func (s *CaseService) processDate(dateValue interface{}) string {
+	if dateValue == nil {
+		return "Fecha no disponible"
+	}
+
+	if dateStr, ok := dateValue.(string); ok {
+		// Intentar parsear y reformatear la fecha para hacerla más legible
+		if parsedTime, err := time.Parse(time.RFC3339, dateStr); err == nil {
+			return parsedTime.Format("02/01/2006 15:04")
+		}
+		// Si no se puede parsear, devolver tal como está
+		return dateStr
+	}
+
+	return "Fecha no disponible"
+}
+
+func (s *CaseService) processStatus(statusValue interface{}) string {
+	if statusValue == nil {
+		return "Estado desconocido"
+	}
+
+	if statusStr, ok := statusValue.(string); ok {
+		// Estandarizar estados a formato legible
+		switch statusStr {
+		case "pending":
+			return "Pendiente"
+		case "processing":
+			return "En procesamiento"
+		case "completed":
+			return "Completado"
+		case "error":
+			return "Error"
+		case "reviewed":
+			return "Revisado"
+		default:
+			return statusStr
+		}
+	}
+
+	return "Estado desconocido"
+}
+
+func (s *CaseService) processLabel(labelValue interface{}) string {
+	if labelValue == nil {
+		return "Sin clasificar"
+	}
+
+	if labelStr, ok := labelValue.(string); ok {
+		// Estandarizar etiquetas a formato legible
+		switch labelStr {
+		case "pneumonia":
+			return "Neumonía detectada"
+		case "normal":
+			return "Normal"
+		case "uncertain":
+			return "Resultado incierto"
+		default:
+			return labelStr
+		}
+	}
+
+	return "Sin clasificar"
+}
+
+// GetCaseDetail obtiene información COMPLETA de UNA radiografía específica (HU7)
+// Este método es llamado por el GraphQL resolver CaseDetail
+//
+// Flujo completo para HU7:
+// 1. GraphQL resolver → CaseService.GetCaseDetail(caseID, userID)
+// 2. Validar que el caso pertenece al usuario (security)
+// 3. REST call → prediagnostic/case/{caseID} para datos básicos
+// 4. Si estado="validado" → REST call prediagnostic/diagnostic/{caseID}
+// 5. Consolidar datos → GraphQL CaseDetail model
+//
+// Parámetros:
+//   - caseID: ID del caso/radiografía a obtener detalles
+//   - userID: ID del usuario autenticado (para validar propiedad)
+//
+// Retorna: *model.CaseDetail con información completa o error
+func (s *CaseService) GetCaseDetail(caseID, userID string) (*model.CaseDetail, error) {
+	// PASO 1: Obtener información básica del caso
+	caseData, err := s.prediagnosticClient.GetCase(caseID)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo caso del servicio prediagnostic: %w", err)
+	}
+
+	// PASO 2: Validar propiedad del caso (SEGURIDAD CRÍTICA)
+	// El paciente solo puede ver SUS propios casos
+	if !s.validateCaseOwnership(caseData, userID) {
+		return nil, fmt.Errorf("acceso denegado: caso no pertenece al usuario")
+	}
+
+	// PASO 3: Procesar datos básicos usando lógica existente
+	// Reutilizar processAndStandardizeCase() - 78 líneas ya probadas
+	processedCase, err := s.processAndStandardizeCase(caseData)
+	if err != nil {
+		return nil, fmt.Errorf("error procesando datos del caso: %w", err)
+	}
+
+	// PASO 4: Construir CaseDetail base
+	// Crear PreDiagnostic con ResultadosModelo anidado
+	preDiagnostic := &model.PreDiagnostic{
+		PrediagnosticID:  processedCase.ID,
+		PacienteID:       processedCase.PacienteID,
+		Urlrad:           processedCase.URLRadiografia,
+		Estado:           processedCase.Estado,
+		ResultadosModelo: processedCase.Resultados, // ResultadosModelo anidado
+		FechaSubida:      processedCase.FechaSubida,
+	}
+
+	caseDetail := &model.CaseDetail{
+		ID:            processedCase.ID,
+		RadiografiaID: processedCase.ID, // mismo ID para simplificar
+		URLImagen:     processedCase.URLRadiografia,
+		Estado:        processedCase.Estado,
+		FechaSubida:   processedCase.FechaSubida,
+		PreDiagnostic: preDiagnostic, // PreDiagnostic completo
+		Diagnostic:    nil,           // Se llena si existe
+	}
+
+	// PASO 5: Obtener diagnóstico médico si el caso está validado
+	if processedCase.Estado == "Validado" {
+		diagnostic, err := s.getDiagnosticForCase(caseID)
+		if err != nil {
+			// Log warning pero continuar - diagnóstico es opcional
+			log.Printf("Warning: no se pudo obtener diagnóstico para caso %s: %v", caseID, err)
+		} else {
+			caseDetail.Diagnostic = diagnostic
+		}
+	}
+
+	return caseDetail, nil
+}
+
+// validateCaseOwnership valida que el caso pertenece al usuario autenticado
+// Función de SEGURIDAD - evita que pacientes vean casos de otros
+func (s *CaseService) validateCaseOwnership(caseData map[string]interface{}, userID string) bool {
+	// Extraer user_id del caso de manera segura
+	caseUserID, ok := caseData["user_id"].(string)
+	if !ok {
+		log.Printf("Error: caso sin user_id válido")
+		return false
+	}
+
+	return caseUserID == userID
+}
+
+// getDiagnosticForCase obtiene diagnóstico médico si existe
+// Llamada REST interna al servicio Python
+func (s *CaseService) getDiagnosticForCase(caseID string) (*model.Diagnostic, error) {
+	// REST call interno: GET prediagnostic/diagnostic/{caseID}
+	diagnosticData, err := s.prediagnosticClient.GetDiagnostic(caseID)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo diagnóstico: %w", err)
+	}
+
+	// Transformar datos raw → model GraphQL (mapping DB fields to GraphQL schema)
+	doctorNombre := getString(diagnosticData, "doctor_nombre")
+	diagnostic := &model.Diagnostic{
+		ID:               getDiagnosticID(diagnosticData),
+		PrediagnosticoID: getString(diagnosticData, "case_id"),          // DB field "case_id" → GraphQL "prediagnosticoId"
+		Aprobacion:       getString(diagnosticData, "validacion"),       // DB field "validacion" → GraphQL "aprobacion"
+		Comentarios:      getString(diagnosticData, "diagnostico"),      // DB field "diagnostico" → GraphQL "comentarios"
+		FechaRevision:    getString(diagnosticData, "fecha_validacion"), // DB field "fecha_validacion" → GraphQL "fechaRevision"
+		DoctorNombre:     &doctorNombre,                                 // DB field "doctor_nombre" → GraphQL "doctorNombre"
+	}
+
+	return diagnostic, nil
+}
+
+// getString extrae string de map[string]interface{} de manera segura
+// Función helper para convertir datos JSON → GraphQL models
+func getString(data map[string]interface{}, field string) string {
+	if value, exists := data[field]; exists && value != nil {
+		if strValue, ok := value.(string); ok {
+			return strValue
+		}
+	}
+	return ""
+}
+
+// getDiagnosticID extrae ID del diagnóstico de manera segura
+// Maneja tanto string como ObjectId formats
+func getDiagnosticID(data map[string]interface{}) string {
+	if id, exists := data["id"]; exists && id != nil {
+		if strValue, ok := id.(string); ok {
+			return strValue
+		}
+	}
+	// Fallback a _id si no hay id
+	if id, exists := data["_id"]; exists && id != nil {
+		if strValue, ok := id.(string); ok {
+			return strValue
+		}
+	}
+	return ""
+}

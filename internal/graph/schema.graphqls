@@ -1,3 +1,5 @@
+scalar Upload
+
 type PreDiagnostic{
     prediagnostic_id: ID!
     pacienteId: ID!
@@ -13,6 +15,66 @@ type ResultadosModelo{
     fechaProcesamiento:String!
 }
 
+type Case {
+    id: ID!
+    pacienteId: ID!
+    pacienteNombre: String!
+    pacienteEmail: String!
+    fechaSubida: String!
+    estado: String!
+    urlRadiografia: String!
+    resultados: ResultadosModelo
+    doctorAsignado: String
+}
+
+input DiagnosticInput {
+    aprobacion: String!
+    comentario: String!
+}
+
+type DiagnosticResponse {
+    success: Boolean!
+    message: String!
+    diagnostic_id: String
+}
+
 type Query{
     getPreDiagnostic(id:ID!):PreDiagnostic
+    getCases: [Case!]!
+}
+
+# HU7: Query específica para detalle de radiografía
+extend type Query {
+    caseDetail(id: ID!): CaseDetail
+}
+
+# Tipo específico para HU7: Información completa de detalle  
+type CaseDetail {
+    # Información básica del caso
+    id: ID!
+    radiografiaId: String!
+    urlImagen: String!           # URL completa de la imagen
+    estado: String!              # "procesado", "validado", etc.
+    fechaSubida: String!
+    
+    # Resultados del modelo de IA (información detallada)
+    preDiagnostic: PreDiagnostic!
+    
+    # Diagnóstico médico (solo si doctor ya validó)
+    diagnostic: Diagnostic
+}
+
+# Tipo para diagnósticos médicos
+type Diagnostic {
+    id: ID!
+    prediagnosticoId: ID!        # Still using prediagnosticoId for compatibility
+    aprobacion: String!          # Maps to "validacion" field in DB
+    comentarios: String!         # Maps to "diagnostico" field in DB
+    fechaRevision: String!       # Maps to "fecha_validacion" field
+    doctorNombre: String         # Maps to "doctor_nombre" field
+}
+
+type Mutation {
+    createDiagnostic(id_prediagnostico: ID!, input: DiagnosticInput!): DiagnosticResponse!
+    uploadImage(imagen: Upload!): Boolean!
 }
