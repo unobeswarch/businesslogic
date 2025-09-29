@@ -81,7 +81,7 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 	// db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
 	db, err := sql.Open("postgres", "postgres://postgres:BDatosPost0912%2B@localhost:5432/blogic_db?sslmode=disable")
 	if err != nil {
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 	defer db.Close()
 
@@ -98,13 +98,13 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 	err = db.QueryRow(query, correo).Scan(&nombre_completo, &id_usuario, &correo_usuario, &contrasena_usuario, &rol_usuario)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0, "", "", "", fmt.Errorf("usuario no encontrado")
+			return "", 0, "", "", "", fmt.Errorf("usuario no encontrado")
 		}
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(contrasena_usuario), []byte(contrasena))
 	if err != nil {
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 
 	var auth AuthService = AuthService{
@@ -121,10 +121,10 @@ func IniciarSesion(correo string, contrasena string) (int, string, string, strin
 
 	tokenString, err := token.SignedString(auth.key)
 	if err != nil {
-		return 0, "", "", "", err
+		return "", 0, "", "", "", err
 	}
 
-	return id_usuario, nombre_completo, rol_usuario, tokenString, nil
+	return nombre_completo, id_usuario, correo_usuario, rol_usuario, tokenString, nil
 }
 
 type AuthService struct {
