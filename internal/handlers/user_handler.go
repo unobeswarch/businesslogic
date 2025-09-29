@@ -22,7 +22,6 @@ func HandlerRegistrarUsuario(w http.ResponseWriter, r *http.Request) {
 
 	var usuario models.User
 	err := json.NewDecoder(r.Body).Decode(&usuario)
-
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -99,7 +98,7 @@ func HandlerIniciarSesion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nombre, id, correo, rol, token, err := services.IniciarSesion(datos["correo"].(string), datos["contrasena"].(string))
+	nombre, id, rol, token, err := services.IniciarSesion(datos["correo"].(string), datos["contrasena"].(string))
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -116,7 +115,7 @@ func HandlerIniciarSesion(w http.ResponseWriter, r *http.Request) {
 		"token":   token,
 		"rol":     rol,
 		"user_id": id,
-		"correo":  correo,
+		"correo":  datos["correo"].(string),
 	})
 }
 
@@ -147,7 +146,6 @@ func HandlerValidacion(w http.ResponseWriter, r *http.Request) {
 
 	authService := services.NewAuthService()
 	claims, err := authService.ValidateJWT(token)
-
 	if err != nil {
 		http.Error(w, `{"error": "token inválido"}`, http.StatusUnauthorized)
 		return
