@@ -137,6 +137,22 @@ func NewAuthService() *AuthService {
 	return &AuthService{}
 }
 
+// UserExists verifica si el usuario existe en la base de datos relacional
+func (s *AuthService) UserExists(ctx context.Context, userID string) (bool, error) {
+	db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
+	if err != nil {
+		return false, err
+	}
+	defer db.Close()
+
+	var exists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM usuarios WHERE id=$1)", userID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // ValidateTokenAndRole valida el token de autorización y verifica el rol
 func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader string, requiredRole string) (*UserClaims, error) {
 	if authHeader == "" {

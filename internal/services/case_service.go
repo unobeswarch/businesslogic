@@ -12,6 +12,26 @@ type CaseService struct {
 	prediagnosticClient *clients.PreDiagnosticClient
 }
 
+// GetCasesByUserID obtiene los casos del usuario desde el servicio prediagnostic
+func (s *CaseService) GetCasesByUserID(userID string) ([]*model.Case, error) {
+	rawCases, err := s.prediagnosticClient.GetCasesByUserID(userID)
+	if err != nil {
+		if err.Error() == "no radiografias" {
+			return nil, fmt.Errorf("no radiografias")
+		}
+		return nil, err
+	}
+	var cases []*model.Case
+	for _, rawCase := range rawCases {
+		processedCase, err := s.processAndStandardizeCase(rawCase)
+		if err != nil {
+			continue
+		}
+		cases = append(cases, processedCase)
+	}
+	return cases, nil
+}
+
 func NewCaseService(prediagnosticURL string) *CaseService {
 	return &CaseService{
 		prediagnosticClient: clients.NewPrediagnosticClient(prediagnosticURL),
@@ -85,22 +105,22 @@ func (s *CaseService) processAndStandardizeCase(rawCase map[string]interface{}) 
 		if resultadosMap, ok := resultadosRaw.(map[string]interface{}); ok {
 			resultados = &model.ResultadosModelo{
 				ProbNeumonia:       s.extractFloatField(resultadosMap, "probabilidad_neumonia"),
-				Etiqueta:          s.processLabel(resultadosMap["etiqueta"]),
+				Etiqueta:           s.processLabel(resultadosMap["etiqueta"]),
 				FechaProcesamiento: s.processDate(rawCase["fecha_procesamiento"]),
 			}
 		}
 	}
 
 	return &model.Case{
-		ID:              caseID,
-		PacienteID:      pacienteID,
-		PacienteNombre:  pacienteNombre,
-		PacienteEmail:   pacienteEmail,
-		FechaSubida:     fechaSubida,
-		Estado:          estado,
-		URLRadiografia:  urlRadiografia,
-		Resultados:      resultados,
-		DoctorAsignado:  &doctorAsignado,
+		ID:             caseID,
+		PacienteID:     pacienteID,
+		PacienteNombre: pacienteNombre,
+		PacienteEmail:  pacienteEmail,
+		FechaSubida:    fechaSubida,
+		Estado:         estado,
+		URLRadiografia: urlRadiografia,
+		Resultados:     resultados,
+		DoctorAsignado: &doctorAsignado,
 	}, nil
 }
 
