@@ -129,21 +129,32 @@ func (r *queryResolver) GetCases(ctx context.Context) ([]*model.Case, error) {
 		}
 	}
 
-	// Validar token y rol de doctor
-	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "doctor")
+	// Validar token y rol de paciente
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "paciente")
 	if err != nil {
 		return nil, fmt.Errorf("acceso denegado: %w", err)
 	}
 
-	fmt.Printf("Acceso autorizado para doctor: %s (%s)\n", userClaims.Email, userClaims.UserID)
+	userID := userClaims.UserID
 
-	// Obtener casos del servicio
-	cases, err := r.Resolver.CaseSrv.GetAllCases()
+	// Validar que el usuario existe en la base relacional
+	exists, err := r.Resolver.AuthSrv.UserExists(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("error obteniendo casos: %w", err)
+		return nil, fmt.Errorf("error validando usuario: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("usuario no existe")
 	}
 
-	fmt.Printf("Se encontraron %d casos\n", len(cases))
+	// Consumir el endpoint del componente prediagnostic: GET /prediagnostic/cases/{user_id}
+	cases, err := r.Resolver.CaseSrv.GetCasesByUserID(userID)
+	if err != nil {
+		if err.Error() == "no radiografias" {
+			return nil, fmt.Errorf("usuario sin radiografias")
+		}
+		return nil, fmt.Errorf("error en conexión con prediagnostic: %w", err)
+	}
+
 	return cases, nil
 }
 

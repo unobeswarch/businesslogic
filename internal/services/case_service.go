@@ -13,6 +13,26 @@ type CaseService struct {
 	prediagnosticClient *clients.PreDiagnosticClient
 }
 
+// GetCasesByUserID obtiene los casos del usuario desde el servicio prediagnostic
+func (s *CaseService) GetCasesByUserID(userID string) ([]*model.Case, error) {
+	rawCases, err := s.prediagnosticClient.GetCasesByUserID(userID)
+	if err != nil {
+		if err.Error() == "no radiografias" {
+			return nil, fmt.Errorf("no radiografias")
+		}
+		return nil, err
+	}
+	var cases []*model.Case
+	for _, rawCase := range rawCases {
+		processedCase, err := s.processAndStandardizeCase(rawCase)
+		if err != nil {
+			continue
+		}
+		cases = append(cases, processedCase)
+	}
+	return cases, nil
+}
+
 func NewCaseService(prediagnosticURL string) *CaseService {
 	return &CaseService{
 		prediagnosticClient: clients.NewPrediagnosticClient(prediagnosticURL),
