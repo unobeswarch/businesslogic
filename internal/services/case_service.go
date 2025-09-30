@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/unobeswarch/businesslogic/internal/clients"
@@ -207,4 +208,138 @@ func (s *CaseService) processLabel(labelValue interface{}) string {
 	}
 
 	return "Sin clasificar"
+}
+
+// GetCaseDetail obtiene información COMPLETA de UNA radiografía específica (HU7)
+// Este método es llamado por el GraphQL resolver CaseDetail
+//
+// Flujo completo para HU7:
+// 1. GraphQL resolver → CaseService.GetCaseDetail(caseID, userID)
+// 2. Validar que el caso pertenece al usuario (security)
+// 3. REST call → prediagnostic/case/{caseID} para datos básicos
+// 4. Si estado="validado" → REST call prediagnostic/diagnostic/{caseID}
+// 5. Consolidar datos → GraphQL CaseDetail model
+//
+// Parámetros:
+//   - caseID: ID del caso/radiografía a obtener detalles
+//   - userID: ID del usuario autenticado (para validar propiedad)
+//
+// Retorna: *model.CaseDetail con información completa o error
+func (s *CaseService) GetCaseDetail(caseID, userID string) (*model.CaseDetail, error) {
+	// PASO 1: Obtener información básica del caso
+	caseData, err := s.prediagnosticClient.GetCase(caseID)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo caso del servicio prediagnostic: %w", err)
+	}
+
+	// PASO 2: Validar propiedad del caso (SEGURIDAD CRÍTICA)
+	// El paciente solo puede ver SUS propios casos
+	if !s.validateCaseOwnership(caseData, userID) {
+		return nil, fmt.Errorf("acceso denegado: caso no pertenece al usuario")
+	}
+
+	// PASO 3: Procesar datos básicos usando lógica existente
+	// Reutilizar processAndStandardizeCase() - 78 líneas ya probadas
+	processedCase, err := s.processAndStandardizeCase(caseData)
+	if err != nil {
+		return nil, fmt.Errorf("error procesando datos del caso: %w", err)
+	}
+
+	// PASO 4: Construir CaseDetail base
+	// Crear PreDiagnostic con ResultadosModelo anidado
+	preDiagnostic := &model.PreDiagnostic{
+		PrediagnosticID:  processedCase.ID,
+		PacienteID:       processedCase.PacienteID,
+		Urlrad:           processedCase.URLRadiografia,
+		Estado:           processedCase.Estado,
+		ResultadosModelo: processedCase.Resultados, // ResultadosModelo anidado
+		FechaSubida:      processedCase.FechaSubida,
+	}
+
+	caseDetail := &model.CaseDetail{
+		ID:            processedCase.ID,
+		RadiografiaID: processedCase.ID, // mismo ID para simplificar
+		URLImagen:     processedCase.URLRadiografia,
+		Estado:        processedCase.Estado,
+		FechaSubida:   processedCase.FechaSubida,
+		PreDiagnostic: preDiagnostic, // PreDiagnostic completo
+		Diagnostic:    nil,           // Se llena si existe
+	}
+
+	// PASO 5: Obtener diagnóstico médico si el caso está validado
+	if processedCase.Estado == "Validado" {
+		diagnostic, err := s.getDiagnosticForCase(caseID)
+		if err != nil {
+			// Log warning pero continuar - diagnóstico es opcional
+			log.Printf("Warning: no se pudo obtener diagnóstico para caso %s: %v", caseID, err)
+		} else {
+			caseDetail.Diagnostic = diagnostic
+		}
+	}
+
+	return caseDetail, nil
+}
+
+// validateCaseOwnership valida que el caso pertenece al usuario autenticado
+// Función de SEGURIDAD - evita que pacientes vean casos de otros
+func (s *CaseService) validateCaseOwnership(caseData map[string]interface{}, userID string) bool {
+	// Extraer user_id del caso de manera segura
+	caseUserID, ok := caseData["user_id"].(string)
+	if !ok {
+		log.Printf("Error: caso sin user_id válido")
+		return false
+	}
+
+	return caseUserID == userID
+}
+
+// getDiagnosticForCase obtiene diagnóstico médico si existe
+// Llamada REST interna al servicio Python
+func (s *CaseService) getDiagnosticForCase(caseID string) (*model.Diagnostic, error) {
+	// REST call interno: GET prediagnostic/diagnostic/{caseID}
+	diagnosticData, err := s.prediagnosticClient.GetDiagnostic(caseID)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo diagnóstico: %w", err)
+	}
+
+	// Transformar datos raw → model GraphQL (mapping DB fields to GraphQL schema)
+	doctorNombre := getString(diagnosticData, "doctor_nombre")
+	diagnostic := &model.Diagnostic{
+		ID:               getDiagnosticID(diagnosticData),
+		PrediagnosticoID: getString(diagnosticData, "case_id"),          // DB field "case_id" → GraphQL "prediagnosticoId"
+		Aprobacion:       getString(diagnosticData, "validacion"),       // DB field "validacion" → GraphQL "aprobacion"
+		Comentarios:      getString(diagnosticData, "diagnostico"),      // DB field "diagnostico" → GraphQL "comentarios"
+		FechaRevision:    getString(diagnosticData, "fecha_validacion"), // DB field "fecha_validacion" → GraphQL "fechaRevision"
+		DoctorNombre:     &doctorNombre,                                 // DB field "doctor_nombre" → GraphQL "doctorNombre"
+	}
+
+	return diagnostic, nil
+}
+
+// getString extrae string de map[string]interface{} de manera segura
+// Función helper para convertir datos JSON → GraphQL models
+func getString(data map[string]interface{}, field string) string {
+	if value, exists := data[field]; exists && value != nil {
+		if strValue, ok := value.(string); ok {
+			return strValue
+		}
+	}
+	return ""
+}
+
+// getDiagnosticID extrae ID del diagnóstico de manera segura
+// Maneja tanto string como ObjectId formats
+func getDiagnosticID(data map[string]interface{}) string {
+	if id, exists := data["id"]; exists && id != nil {
+		if strValue, ok := id.(string); ok {
+			return strValue
+		}
+	}
+	// Fallback a _id si no hay id
+	if id, exists := data["_id"]; exists && id != nil {
+		if strValue, ok := id.(string); ok {
+			return strValue
+		}
+	}
+	return ""
 }

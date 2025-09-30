@@ -198,3 +198,84 @@ func (c *PreDiagnosticClient) CreateDiagnostic(prediagnosticID, aprobacion, come
 
 	return result, nil
 }
+
+// GetCase obtiene información básica de UN caso específico (HU7)
+// Llamada REST: GET /case/{caseID}
+//
+// Parámetros:
+//   - caseID: ID del caso a obtener
+//
+// Retorna: map[string]interface{} con datos del caso o error
+func (c *PreDiagnosticClient) GetCase(caseID string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/case/%s", c.BaseURL, caseID)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("error en petición HTTP para caso %s: %w", caseID, err)
+	}
+	defer resp.Body.Close()
+
+	// Verificar el código de estado
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("respuesta HTTP %d para caso %s: %s", resp.StatusCode, caseID, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error leyendo respuesta para caso %s: %w", caseID, err)
+	}
+
+	// Verificar si el body está vacío
+	if len(body) == 0 {
+		return nil, fmt.Errorf("respuesta vacía del servidor para caso %s", caseID)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("error parseando JSON para caso %s: %w", caseID, err)
+	}
+
+	return result, nil
+}
+
+// GetDiagnostic obtiene diagnóstico médico de un caso (HU7)
+// Llamada REST: GET /diagnostic/{caseID}
+//
+// Parámetros:
+//   - caseID: ID del caso para obtener diagnóstico
+//
+// Retorna: map[string]interface{} con diagnóstico médico o error
+func (c *PreDiagnosticClient) GetDiagnostic(caseID string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/diagnostic/%s", c.BaseURL, caseID)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("error en petición HTTP para diagnóstico %s: %w", caseID, err)
+	}
+	defer resp.Body.Close()
+
+	// 404 es válido - no todos los casos tienen diagnóstico
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("diagnóstico no encontrado para caso %s", caseID)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("respuesta HTTP %d para diagnóstico %s: %s", resp.StatusCode, caseID, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error leyendo respuesta para diagnóstico %s: %w", caseID, err)
+	}
+
+	if len(body) == 0 {
+		return nil, fmt.Errorf("respuesta vacía del servidor para diagnóstico %s", caseID)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("error parseando JSON para diagnóstico %s: %w", caseID, err)
+	}
+
+	return result, nil
+}

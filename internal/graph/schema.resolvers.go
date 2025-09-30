@@ -166,3 +166,29 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// CaseDetail resolver - específico para HU7
+func (r *queryResolver) CaseDetail(ctx context.Context, id string) (*model.CaseDetail, error) {
+	// Obtener información del usuario autenticado desde JWT token
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok {
+		return nil, fmt.Errorf("usuario no autenticado")
+	}
+
+	userRole, ok := ctx.Value("role").(string)
+	if !ok || userRole != "paciente" {
+		return nil, fmt.Errorf("acceso denegado: solo pacientes pueden ver detalles")
+	}
+
+	// Llamar al CaseService para obtener detalles
+	// El service internamente:
+	// 1. Valida que el caso pertenezca al usuario
+	// 2. Llama REST APIs del servicio Python
+	// 3. Consolida datos de prediagnóstico + diagnóstico médico
+	caseDetail, err := r.Resolver.CaseSrv.GetCaseDetail(id, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo detalle del caso: %w", err)
+	}
+
+	return caseDetail, nil
+}
