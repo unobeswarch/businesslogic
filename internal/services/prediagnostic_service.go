@@ -27,7 +27,7 @@ func (s *PreDiagnosticService) GetPreDiagnosticByID(id string) (*model.PreDiagno
 	return &model.PreDiagnostic{
 		PrediagnosticID: id,
 		PacienteID:      data["user_id"].(string),
-		Urlrad:          data["radiografia_url"].(string),
+		Urlrad:          data["radiografia_ruta"].(string),
 		Estado:          data["estado"].(string),
 		ResultadosModelo: &model.ResultadosModelo{
 			ProbNeumonia:       resultados["probabilidad_neumonia"].(float64),
