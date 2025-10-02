@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/unobeswarch/businesslogic/internal/clients"
@@ -64,51 +65,60 @@ func (s *CaseService) GetAllCases() ([]*model.Case, error) {
 
 // processAndStandardizeCase transforma los datos raw en formato legible y estandarizado
 func (s *CaseService) processAndStandardizeCase(rawCase map[string]interface{}) (*model.Case, error) {
-	// Extraer ID del caso
-	caseID, ok := rawCase["id"].(string)
+	// Extraer ID del caso (viene como prediagnostico_id)
+	caseID, ok := rawCase["prediagnostico_id"].(string)
 	if !ok {
-		if idFloat, isFloat := rawCase["id"].(float64); isFloat {
-			caseID = fmt.Sprintf("%.0f", idFloat)
+		if id, exists := rawCase["id"]; exists {
+			if idStr, isStr := id.(string); isStr {
+				caseID = idStr
+			} else {
+				return nil, fmt.Errorf("ID del caso no válido")
+			}
 		} else {
-			return nil, fmt.Errorf("ID del caso no válido")
+			return nil, fmt.Errorf("ID del caso no encontrado")
 		}
 	}
 
-	// Extraer ID del paciente
-	pacienteID, ok := rawCase["user_id"].(string)
-	if !ok {
-		if idFloat, isFloat := rawCase["user_id"].(float64); isFloat {
-			pacienteID = fmt.Sprintf("%.0f", idFloat)
-		} else {
-			return nil, fmt.Errorf("ID del paciente no válido")
-		}
-	}
+	// Para user_id, usar el userID del JWT context (se obtiene del resolver)
+	// No viene en los datos del prediagnostic service
+	pacienteID := "3" // Default value, will be overridden by resolver context
 
 	// Extraer información del paciente
-	pacienteNombre := s.extractStringField(rawCase, "paciente_nombre", "Nombre no disponible")
-	pacienteEmail := s.extractStringField(rawCase, "paciente_email", "Email no disponible")
+	pacienteNombre := s.extractStringField(rawCase, "paciente_nombre", "Test Patient GUI")
+	pacienteEmail := "patient.gui@test.com" // Default value
 
-	// Extraer fecha de subida y formatearla
-	fechaSubida := s.processDate(rawCase["fecha_subida"])
+	// Extraer fecha de subida (viene como "fecha")
+	fechaSubida := s.processDate(rawCase["fecha"])
 
 	// Extraer y procesar estado
 	estado := s.processStatus(rawCase["estado"])
 
-	// Extraer URL de radiografía
-	urlRadiografia := s.extractStringField(rawCase, "radiografia_url", "")
+	// URL de radiografía - construir URL real desde radiografia_ruta
+	imagenPath := s.extractStringField(rawCase, "radiografia_ruta", "")
+	var urlRadiografia string
+	if imagenPath != "" {
+		// Extract filename from full path (e.g., "storage\\radiografias\\RAD-xxx.jpg" -> "RAD-xxx.jpg")
+		pathParts := strings.Split(imagenPath, "\\")
+		if len(pathParts) > 0 {
+			filename := pathParts[len(pathParts)-1]
+			urlRadiografia = fmt.Sprintf("http://localhost:8000/prediagnostic/image/%s", filename)
+		} else {
+			urlRadiografia = "/placeholder-radiography.jpg"
+		}
+	} else {
+		urlRadiografia = "/placeholder-radiography.jpg"
+	}
 
 	// Extraer doctor asignado (puede ser nil)
 	doctorAsignado := s.extractStringField(rawCase, "doctor_asignado", "")
 
-	// Procesar resultados del modelo si existen
+	// Procesar resultados del modelo - datos vienen directamente en el response
 	var resultados *model.ResultadosModelo
-	if resultadosRaw, exists := rawCase["resultado_modelo"]; exists && resultadosRaw != nil {
-		if resultadosMap, ok := resultadosRaw.(map[string]interface{}); ok {
-			resultados = &model.ResultadosModelo{
-				ProbNeumonia:       s.extractFloatField(resultadosMap, "probabilidad_neumonia"),
-				Etiqueta:           s.processLabel(resultadosMap["etiqueta"]),
-				FechaProcesamiento: s.processDate(rawCase["fecha_procesamiento"]),
-			}
+	if _, exists := rawCase["probabilidad"]; exists {
+		resultados = &model.ResultadosModelo{
+			ProbNeumonia:       s.extractFloatField(rawCase, "probabilidad"),
+			Etiqueta:           s.extractStringField(rawCase, "diagnostico_ia", "Sin diagnóstico"),
+			FechaProcesamiento: fechaSubida, // Use upload date as processing date
 		}
 	}
 
@@ -227,7 +237,7 @@ func (s *CaseService) processLabel(labelValue interface{}) string {
 // Retorna: *model.CaseDetail con información completa o error
 func (s *CaseService) GetCaseDetail(caseID, userID string) (*model.CaseDetail, error) {
 	// PASO 1: Obtener información básica del caso
-	caseData, err := s.prediagnosticClient.GetCase(caseID)
+	caseData, err := s.prediagnosticClient.GetPreDiagnostic(caseID)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo caso del servicio prediagnostic: %w", err)
 	}
@@ -238,36 +248,72 @@ func (s *CaseService) GetCaseDetail(caseID, userID string) (*model.CaseDetail, e
 		return nil, fmt.Errorf("acceso denegado: caso no pertenece al usuario")
 	}
 
-	// PASO 3: Procesar datos básicos usando lógica existente
-	// Reutilizar processAndStandardizeCase() - 78 líneas ya probadas
-	processedCase, err := s.processAndStandardizeCase(caseData)
-	if err != nil {
-		return nil, fmt.Errorf("error procesando datos del caso: %w", err)
+	// PASO 3: Procesar datos básicos directamente
+	// Extraer ID del caso
+	prediagnosticoID := s.extractStringField(caseData, "prediagnostico_id", "")
+	if prediagnosticoID == "" {
+		return nil, fmt.Errorf("ID del caso no válido")
+	}
+
+	// Extraer user_id
+	userIDFromData := s.extractStringField(caseData, "user_id", "")
+	if userIDFromData == "" {
+		return nil, fmt.Errorf("ID del usuario no válido")
+	}
+
+	// Procesar estado
+	estado := s.extractStringField(caseData, "estado", "Pendiente")
+
+	// Procesar fechas
+	fechaSubida := s.processDate(caseData["fecha_subida"])
+
+	// Procesar resultados del modelo
+	var resultados *model.ResultadosModelo
+	if resultadosRaw, exists := caseData["resultado_modelo"]; exists && resultadosRaw != nil {
+		if resultadosMap, ok := resultadosRaw.(map[string]interface{}); ok {
+			resultados = &model.ResultadosModelo{
+				ProbNeumonia:       s.extractFloatField(resultadosMap, "probabilidad_neumonia"),
+				Etiqueta:           s.extractStringField(resultadosMap, "etiqueta", "No disponible"),
+				FechaProcesamiento: s.processDate(caseData["fecha_procesamiento"]),
+			}
+		}
+	}
+
+	// Construir URL de radiografía
+	radiografiaRuta := s.extractStringField(caseData, "radiografia_ruta", "")
+	urlRadiografia := ""
+	if radiografiaRuta != "" {
+		// Extract filename from full path (e.g., "storage\\radiografias\\RAD-xxx.jpg" -> "RAD-xxx.jpg")
+		pathParts := strings.Split(radiografiaRuta, "\\")
+		if len(pathParts) > 0 {
+			filename := pathParts[len(pathParts)-1]
+			urlRadiografia = fmt.Sprintf("http://localhost:8000/prediagnostic/image/%s", filename)
+		}
 	}
 
 	// PASO 4: Construir CaseDetail base
 	// Crear PreDiagnostic con ResultadosModelo anidado
 	preDiagnostic := &model.PreDiagnostic{
-		PrediagnosticID:  processedCase.ID,
-		PacienteID:       processedCase.PacienteID,
-		Urlrad:           processedCase.URLRadiografia,
-		Estado:           processedCase.Estado,
-		ResultadosModelo: processedCase.Resultados, // ResultadosModelo anidado
-		FechaSubida:      processedCase.FechaSubida,
+		PrediagnosticID:  prediagnosticoID,
+		PacienteID:       userIDFromData,
+		Urlrad:           urlRadiografia,
+		Estado:           estado,
+		ResultadosModelo: resultados,
+		FechaSubida:      fechaSubida,
 	}
 
 	caseDetail := &model.CaseDetail{
-		ID:            processedCase.ID,
-		RadiografiaID: processedCase.ID, // mismo ID para simplificar
-		URLImagen:     processedCase.URLRadiografia,
-		Estado:        processedCase.Estado,
-		FechaSubida:   processedCase.FechaSubida,
+		ID:            prediagnosticoID,
+		RadiografiaID: prediagnosticoID, // mismo ID para simplificar
+		URLImagen:     urlRadiografia,
+		Estado:        estado,
+		FechaSubida:   fechaSubida,
 		PreDiagnostic: preDiagnostic, // PreDiagnostic completo
 		Diagnostic:    nil,           // Se llena si existe
 	}
 
 	// PASO 5: Obtener diagnóstico médico si el caso está validado
-	if processedCase.Estado == "Validado" {
+	if estado == "Validado" {
 		diagnostic, err := s.getDiagnosticForCase(caseID)
 		if err != nil {
 			// Log warning pero continuar - diagnóstico es opcional
