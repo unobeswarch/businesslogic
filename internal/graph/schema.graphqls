@@ -41,10 +41,6 @@ type DiagnosticResponse {
 type Query{
     getPreDiagnostic(id:ID!):PreDiagnostic
     getCases: [Case!]!
-}
-
-# HU7: Query específica para detalle de radiografía
-extend type Query {
     caseDetail(id: ID!): CaseDetail
 }
 

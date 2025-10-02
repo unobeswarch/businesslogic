@@ -38,11 +38,15 @@ func (c *PreDiagnosticClient) GetCasesByUserID(userID string) ([]map[string]inte
 		return nil, fmt.Errorf("respuesta vacía del servidor")
 	}
 
-	var result []map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
+	// El servicio Python devuelve {cases: [...]} no directamente [...]
+	var responseWrapper struct {
+		Cases []map[string]interface{} `json:"cases"`
+	}
+	if err := json.Unmarshal(body, &responseWrapper); err != nil {
 		return nil, fmt.Errorf("error parseando JSON de casos: %w", err)
 	}
-	return result, nil
+
+	return responseWrapper.Cases, nil
 }
 
 func NewPrediagnosticClient(baseURL string) *PreDiagnosticClient {
