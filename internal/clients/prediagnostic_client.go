@@ -13,6 +13,42 @@ type PreDiagnosticClient struct {
 	BaseURL string
 }
 
+// GetCasesByUserID obtiene los casos del usuario desde el servicio prediagnostic
+func (c *PreDiagnosticClient) GetCasesByUserID(userID string) ([]map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/prediagnostic/cases/%s", c.BaseURL, userID)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("no radiografias")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("respuesta HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if len(body) == 0 {
+		return nil, fmt.Errorf("respuesta vacía del servidor")
+	}
+
+	// El servicio Python devuelve {cases: [...]} no directamente [...]
+	var responseWrapper struct {
+		Cases []map[string]interface{} `json:"cases"`
+	}
+	if err := json.Unmarshal(body, &responseWrapper); err != nil {
+		return nil, fmt.Errorf("error parseando JSON de casos: %w", err)
+	}
+
+	return responseWrapper.Cases, nil
+}
+
 func NewPrediagnosticClient(baseURL string) *PreDiagnosticClient {
 	return &PreDiagnosticClient{BaseURL: baseURL}
 }

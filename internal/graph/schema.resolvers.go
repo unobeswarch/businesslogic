@@ -79,7 +79,6 @@ func (r *mutationResolver) UploadImage(ctx context.Context, imagen graphql.Uploa
 	writer := multipart.NewWriter(body)
 	_ = writer.WriteField("user_id", userClaims.UserID)
 	part, err := writer.CreateFormFile("imagen", imagen.Filename)
-
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +98,6 @@ func (r *mutationResolver) UploadImage(ctx context.Context, imagen graphql.Uploa
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
-
 	if err != nil {
 		return false, err
 	}
@@ -129,44 +127,74 @@ func (r *queryResolver) GetCases(ctx context.Context) ([]*model.Case, error) {
 		}
 	}
 
-	// Validar token y rol de doctor
-	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "doctor")
+	// First try to validate as doctor
+	_, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "doctor")
+	if err == nil {
+		// User is a doctor - return all cases
+		cases, err := r.Resolver.CaseSrv.GetAllCases()
+		if err != nil {
+			if err.Error() == "no radiografias" {
+				return []*model.Case{}, nil
+			}
+			return nil, fmt.Errorf("error obteniendo todos los casos: %w", err)
+		}
+		return cases, nil
+	}
+
+	// If not doctor, try to validate as patient
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "paciente")
 	if err != nil {
 		return nil, fmt.Errorf("acceso denegado: %w", err)
 	}
 
-	fmt.Printf("Acceso autorizado para doctor: %s (%s)\n", userClaims.Email, userClaims.UserID)
+	userID := userClaims.UserID
 
-	// Obtener casos del servicio
-	cases, err := r.Resolver.CaseSrv.GetAllCases()
+	// Validar que el usuario existe en la base relacional
+	exists, err := r.Resolver.AuthSrv.UserExists(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("error obteniendo casos: %w", err)
+		return nil, fmt.Errorf("error validando usuario: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("usuario no existe")
 	}
 
-	fmt.Printf("Se encontraron %d casos\n", len(cases))
+	// Consumir el endpoint del componente prediagnostic: GET /prediagnostic/cases/{user_id}
+	cases, err := r.Resolver.CaseSrv.GetCasesByUserID(userID)
+	if err != nil {
+		if err.Error() == "no radiografias" {
+			return nil, fmt.Errorf("usuario sin radiografias")
+		}
+		return nil, fmt.Errorf("error en conexión con prediagnostic: %w", err)
+	}
+
 	return cases, nil
 }
 
-// Mutation returns generated.MutationResolver implementation.
-func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
-
-// Query returns generated.QueryResolver implementation.
-func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
-
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
-
 // CaseDetail resolver - específico para HU7
 func (r *queryResolver) CaseDetail(ctx context.Context, id string) (*model.CaseDetail, error) {
-	// Obtener información del usuario autenticado desde JWT token
-	userID, ok := ctx.Value("user_id").(string)
-	if !ok {
-		return nil, fmt.Errorf("usuario no autenticado")
+	// Extraer token de autorización del contexto/headers (same pattern as GetCases)
+	authHeader := ""
+	if authValue := ctx.Value("Authorization"); authValue != nil {
+		if authStr, ok := authValue.(string); ok {
+			authHeader = authStr
+		}
 	}
 
-	userRole, ok := ctx.Value("role").(string)
-	if !ok || userRole != "paciente" {
-		return nil, fmt.Errorf("acceso denegado: solo pacientes pueden ver detalles")
+	// Validar token y rol de paciente
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "paciente")
+	if err != nil {
+		return nil, fmt.Errorf("acceso denegado: %w", err)
+	}
+
+	userID := userClaims.UserID
+
+	// Validar que el usuario existe en la base relacional
+	exists, err := r.Resolver.AuthSrv.UserExists(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error validando usuario: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("usuario no existe")
 	}
 
 	// Llamar al CaseService para obtener detalles
@@ -181,3 +209,14 @@ func (r *queryResolver) CaseDetail(ctx context.Context, id string) (*model.CaseD
 
 	return caseDetail, nil
 }
+
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+
+// Query returns generated.QueryResolver implementation.
+func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
+
+type (
+	mutationResolver struct{ *Resolver }
+	queryResolver    struct{ *Resolver }
+)
