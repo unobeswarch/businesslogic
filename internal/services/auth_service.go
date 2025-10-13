@@ -1,17 +1,15 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
+	"net/http"
 
-	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
-	"github.com/unobeswarch/businesslogic/internal/models"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -19,117 +17,6 @@ var (
 	ErrDatosEnviados    = errors.New("VALIDATION_ERROR")
 	ErrTratamientoDatos = errors.New("BUSINESS_RULE_VIOLATION")
 )
-
-func RegistrarUsuario(u models.User) (int, time.Time, error) {
-	if u.NombreCompleto == "" || u.Correo == "" || u.Contrasena == "" || len(u.Contrasena) < 8 {
-		return 0, time.Time{}, ErrDatosEnviados
-	}
-
-	if !u.AceptaTratamientoDatos {
-		return 0, time.Time{}, ErrTratamientoDatos
-	}
-
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=BDatosPost0912+ dbname=blogic_db sslmode=disable")
-	// Si falla, probar con URL encoding (línea comentada abajo)
-	// db, err := sql.Open("postgres", "postgres://postgres:BDatosPost0912%2B@localhost:5432/blogic_db?sslmode=disable")
-	// Original password (comentada):
-	// db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
-	if err != nil {
-		return 0, time.Time{}, err
-	}
-	defer db.Close()
-
-	var existe bool
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM usuarios WHERE correo=$1 OR identificacion=$2)", u.Correo, u.Identificacion).Scan(&existe)
-	if err != nil {
-		return 0, time.Time{}, err
-	}
-	if existe {
-		return 0, time.Time{}, ErrUsuarioExistente
-	}
-
-	hash_contrasena, err := bcrypt.GenerateFromPassword([]byte(u.Contrasena), bcrypt.DefaultCost)
-	if err != nil {
-		return 0, time.Time{}, err
-	}
-
-	query := `
-		INSERT INTO usuarios 
-		(nombre_completo, edad, rol, identificacion, correo, contrasena, acepta_tratamiento_datos)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, fecha_creacion
-	`
-
-	var id int
-	var fechaCreacion time.Time
-
-	err = db.QueryRow(
-		query,
-		u.NombreCompleto,
-		u.Edad,
-		u.Rol,
-		u.Identificacion,
-		u.Correo,
-		hash_contrasena,
-		u.AceptaTratamientoDatos,
-	).Scan(&id, &fechaCreacion)
-	if err != nil {
-		return 0, time.Time{}, err
-	}
-
-	return id, fechaCreacion, nil
-}
-
-func IniciarSesion(correo string, contrasena string) (int, string, string, string, error) {
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=BDatosPost0912+ dbname=blogic_db sslmode=disable")
-	// Original:
-	// db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
-	if err != nil {
-		return 0, "", "", "", err
-	}
-	defer db.Close()
-
-	var (
-		id_usuario         int
-		contrasena_usuario string
-		correo_usuario     string
-		rol_usuario        string
-		nombre_completo    string
-	)
-
-	query := `SELECT nombre_completo, id, correo, contrasena, rol FROM usuarios WHERE correo=$1`
-
-	err = db.QueryRow(query, correo).Scan(&nombre_completo, &id_usuario, &correo_usuario, &contrasena_usuario, &rol_usuario)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, "", "", "", fmt.Errorf("usuario no encontrado")
-		}
-		return 0, "", "", "", err
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(contrasena_usuario), []byte(contrasena))
-	if err != nil {
-		return 0, "", "", "", err
-	}
-
-	var auth AuthService = AuthService{
-		key: []byte("asfqwr1242t1weg"),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id_usuario":      id_usuario,
-		"email":           correo_usuario,
-		"rol":             rol_usuario,
-		"nombre_completo": nombre_completo,
-		"exp":             time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString(auth.key)
-	if err != nil {
-		return 0, "", "", "", err
-	}
-
-	return id_usuario, correo_usuario, rol_usuario, tokenString, nil
-}
 
 type AuthService struct {
 	key []byte
@@ -142,6 +29,12 @@ type UserClaims struct {
 	Name   string
 }
 
+type AuthResponse struct {
+	Valid bool        `json:"valid"`
+	User  interface{} `json:"user"`
+	Error string      `json:"error,omitempty"`
+}
+
 func NewAuthService() *AuthService {
 	return &AuthService{}
 }
@@ -149,7 +42,7 @@ func NewAuthService() *AuthService {
 // UserExists verifica si el usuario existe en la base de datos relacional
 func (s *AuthService) UserExists(ctx context.Context, userID string) (bool, error) {
 	// Intentar primera con connection string sin URL encoding
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=BDatosPost0912+ dbname=blogic_db sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=123 dbname=blogic_db sslmode=disable")
 	// Si falla, probar con URL encoding (línea comentada abajo)
 	// db, err := sql.Open("postgres", "postgres://postgres:BDatosPost0912%2B@localhost:5432/blogic_db?sslmode=disable")
 	// Original password (comentada):
@@ -167,52 +60,52 @@ func (s *AuthService) UserExists(ctx context.Context, userID string) (bool, erro
 	return exists, nil
 }
 
-// ValidateTokenAndRole valida el token de autorización y verifica el rol
-func (s *AuthService) ValidateTokenAndRole(ctx context.Context, authHeader string, requiredRole string) (*UserClaims, error) {
-	if authHeader == "" {
-		return nil, errors.New("token de autorización requerido")
-	}
+func (s *AuthService) ValidateTokenWithAuthBE(ctx context.Context, authHeader string, requiredRole string) (*UserClaims, error) {
+	body, _ := json.Marshal(map[string]string{"required_role": requiredRole})
 
-	// Extraer el token del header "Bearer <token>"
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, errors.New("formato de token inválido")
-	}
+	req, _ := http.NewRequestWithContext(ctx, "POST", "http://localhost:8081/validation", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", authHeader)
+	req.Header.Set("Content-Type", "application/json")
 
-	token := parts[1]
-
-	userClaims, err := s.ValidateJWT(token)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("token inválido: %w", err)
+		return nil, fmt.Errorf("error comunicando con auth-be: %w", err)
 	}
+	defer resp.Body.Close()
 
-	// Verificar rol
-	if userClaims.Role != requiredRole {
-		return nil, fmt.Errorf("acceso denegado: se requiere rol %s, pero el usuario tiene rol %s",
-			requiredRole, userClaims.Role)
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var result struct {
+			UserID string `json:"UserID"`
+			Email  string `json:"Email"`
+			Role   string `json:"Role"`
+			Name   string `json:"Name"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return nil, fmt.Errorf("error parseando respuesta: %w", err)
+		}
+
+		return &UserClaims{
+			UserID: result.UserID,
+			Email:  result.Email,
+			Role:   result.Role,
+			Name:   result.Name,
+		}, nil
+
+	case http.StatusUnauthorized:
+		return nil, fmt.Errorf("token inválido o no proporcionado")
+
+	case http.StatusForbidden:
+		return nil, fmt.Errorf("rol no autorizado para esta operación (se requiere '%s')", requiredRole)
+
+	default:
+		var errResp map[string]string
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		msg := errResp["error"]
+		if msg == "" {
+			msg = fmt.Sprintf("auth-be respondió con código %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("validación fallida: %s", msg)
 	}
-
-	return userClaims, nil
-}
-
-func (s *AuthService) ValidateJWT(token string) (*UserClaims, error) {
-	var auth AuthService = AuthService{
-		key: []byte("asfqwr1242t1weg"),
-	}
-
-	tkn, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return auth.key, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	claims := tkn.Claims.(jwt.MapClaims)
-
-	return &UserClaims{
-		UserID: fmt.Sprintf("%v", claims["id_usuario"]),
-		Email:  fmt.Sprintf("%v", claims["email"]),
-		Role:   fmt.Sprintf("%v", claims["rol"]),
-		Name:   fmt.Sprintf("%v", claims["nombre_completo"]),
-	}, nil
 }
