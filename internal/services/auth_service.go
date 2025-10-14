@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,24 +39,48 @@ func NewAuthService() *AuthService {
 }
 
 // UserExists verifica si el usuario existe en la base de datos relacional
-func (s *AuthService) UserExists(ctx context.Context, userID string) (bool, error) {
+func (s *AuthService) UserExistsAuthBE(ctx context.Context, userID string) (bool, error) {
 	// Intentar primera con connection string sin URL encoding
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=123 dbname=blogic_db sslmode=disable")
+	url := "http://localhost:8081/userExists"
 	// Si falla, probar con URL encoding (línea comentada abajo)
 	// db, err := sql.Open("postgres", "postgres://postgres:BDatosPost0912%2B@localhost:5432/blogic_db?sslmode=disable")
 	// Original password (comentada):
 	// db, err := sql.Open("postgres", "postgres://postgres:123@localhost:5432/blogic_db?sslmode=disable")
-	if err != nil {
-		return false, err
-	}
-	defer db.Close()
 
-	var exists bool
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM usuarios WHERE id=$1)", userID).Scan(&exists)
+	bodyData, err := json.Marshal(map[string]string{
+		"user_id": userID,
+	})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error al crear body JSON: %w", err)
 	}
-	return exists, nil
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(bodyData))
+	if err != nil {
+		return false, fmt.Errorf("error al crear request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("error al conectar con auth-be: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var msg map[string]interface{}
+		json.NewDecoder(resp.Body).Decode(&msg)
+		return false, fmt.Errorf("auth-be respondió con %d: %v", resp.StatusCode, msg)
+	}
+
+	var res struct {
+		Exists bool `json:"exists"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return false, fmt.Errorf("error al decodificar respuesta: %w", err)
+	}
+
+	return res.Exists, nil
 }
 
 func (s *AuthService) ValidateTokenWithAuthBE(ctx context.Context, authHeader string, requiredRole string) (*UserClaims, error) {

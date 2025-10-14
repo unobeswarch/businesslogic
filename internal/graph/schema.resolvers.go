@@ -154,7 +154,7 @@ func (r *queryResolver) GetCases(ctx context.Context) ([]*model.Case, error) {
 	fmt.Print(userClaims)
 
 	// Validar que el usuario existe en la base relacional
-	exists, err := r.Resolver.AuthSrv.UserExists(ctx, userID)
+	exists, err := r.Resolver.AuthSrv.UserExistsAuthBE(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error validando usuario: %w", err)
 	}
@@ -193,7 +193,7 @@ func (r *queryResolver) CaseDetail(ctx context.Context, id string) (*model.CaseD
 	userID := userClaims.UserID
 
 	// Validar que el usuario existe en la base relacional
-	exists, err := r.Resolver.AuthSrv.UserExists(ctx, userID)
+	exists, err := r.Resolver.AuthSrv.UserExistsAuthBE(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error validando usuario: %w", err)
 	}
