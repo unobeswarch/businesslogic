@@ -30,7 +30,7 @@ func (r *mutationResolver) CreateDiagnostic(ctx context.Context, idPrediagnostic
 	}
 
 	// Validar token y rol de doctor
-	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "doctor")
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenWithAuthBE(ctx, authHeader, "doctor")
 	if err != nil {
 		return &model.DiagnosticResponse{
 			Success: false,
@@ -66,7 +66,7 @@ func (r *mutationResolver) UploadImage(ctx context.Context, imagen graphql.Uploa
 		}
 	}
 
-	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "paciente")
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenWithAuthBE(ctx, authHeader, "paciente")
 	if err != nil {
 		return false, fmt.Errorf("acceso denegado")
 	}
@@ -128,7 +128,7 @@ func (r *queryResolver) GetCases(ctx context.Context) ([]*model.Case, error) {
 	}
 
 	// First try to validate as doctor
-	_, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "doctor")
+	_, err := r.Resolver.AuthSrv.ValidateTokenWithAuthBE(ctx, authHeader, "doctor")
 	if err == nil {
 		// User is a doctor - return all cases
 		cases, err := r.Resolver.CaseSrv.GetAllCases()
@@ -142,15 +142,19 @@ func (r *queryResolver) GetCases(ctx context.Context) ([]*model.Case, error) {
 	}
 
 	// If not doctor, try to validate as patient
-	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "paciente")
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenWithAuthBE(ctx, authHeader, "paciente")
 	if err != nil {
 		return nil, fmt.Errorf("acceso denegado: %w", err)
 	}
 
 	userID := userClaims.UserID
 
+	fmt.Print("USER ID")
+	fmt.Print(userID)
+	fmt.Print(userClaims)
+
 	// Validar que el usuario existe en la base relacional
-	exists, err := r.Resolver.AuthSrv.UserExists(ctx, userID)
+	exists, err := r.Resolver.AuthSrv.UserExistsAuthBE(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error validando usuario: %w", err)
 	}
@@ -181,7 +185,7 @@ func (r *queryResolver) CaseDetail(ctx context.Context, id string) (*model.CaseD
 	}
 
 	// Validar token y rol de paciente
-	userClaims, err := r.Resolver.AuthSrv.ValidateTokenAndRole(ctx, authHeader, "paciente")
+	userClaims, err := r.Resolver.AuthSrv.ValidateTokenWithAuthBE(ctx, authHeader, "paciente")
 	if err != nil {
 		return nil, fmt.Errorf("acceso denegado: %w", err)
 	}
@@ -189,7 +193,7 @@ func (r *queryResolver) CaseDetail(ctx context.Context, id string) (*model.CaseD
 	userID := userClaims.UserID
 
 	// Validar que el usuario existe en la base relacional
-	exists, err := r.Resolver.AuthSrv.UserExists(ctx, userID)
+	exists, err := r.Resolver.AuthSrv.UserExistsAuthBE(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error validando usuario: %w", err)
 	}
@@ -216,7 +220,5 @@ func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResol
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
-type (
-	mutationResolver struct{ *Resolver }
-	queryResolver    struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }

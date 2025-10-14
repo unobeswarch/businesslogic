@@ -33,7 +33,7 @@ func main() {
 
 	req, _ := http.NewRequest("POST", "http://localhost:8080/query", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNvcnJlbzNAZXhhbXBsZS5jb20iLCJleHAiOjE3NTkxMzcwNzcsImlkX3VzdWFyaW8iOjEsInJvbCI6InBhY2llbnRlIn0.wezrS7S9f2OFKNb-wjyidIkJIjMkMhm8S0K0mZIcg1s")
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNvcnJlbzlAZXhhbXBsZS5jb20iLCJleHAiOjE3NjAzODUzNTQsImlkX3VzdWFyaW8iOjEsIm5vbWJyZV9jb21wbGV0byI6Ikp1YW4gTWVuZGV6Iiwicm9sIjoicGFjaWVudGUifQ.P4fl5bfdTUld2y7X14ZoJqbgEFeuSuvhh5DD4CjIzAg")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
