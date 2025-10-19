@@ -21,17 +21,22 @@ func main() {
 		port = p
 	}
 
-	// URL del servicio de prediagnóstico (configurable por variable de entorno)
+	// URLs de servicios (configurables por variables de entorno)
 	prediagnosticURL := os.Getenv("PREDIAGNOSTIC_SERVICE_URL")
 	if prediagnosticURL == "" {
 		prediagnosticURL = "http://localhost:8000" // URL por defecto
+	}
+
+	authURL := os.Getenv("AUTH_SERVICE_URL")
+	if authURL == "" {
+		authURL = "http://localhost:8081" // URL por defecto del AuthService
 	}
 
 	// Instanciamos los services
 	prediagnosticService := services.NewPrediagnosticService(prediagnosticURL)
 	caseService := services.NewCaseService(prediagnosticURL)
 	authService := services.NewAuthService()
-	diagnosticService := services.NewDiagnosticService(prediagnosticURL)
+	diagnosticService := services.NewDiagnosticService(prediagnosticURL, "http://localhost:8082", authURL)
 
 	// Inyectamos los services en el resolver
 	resolver := &graph.Resolver{

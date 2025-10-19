@@ -55,7 +55,6 @@ func NewPrediagnosticClient(baseURL string) *PreDiagnosticClient {
 
 func (c *PreDiagnosticClient) GetPreDiagnostic(id string) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/prediagnostic/case/%s", c.BaseURL, id)
-
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Printf("Error en la petición HTTP: %v\n", err)
@@ -199,6 +198,23 @@ func (c *PreDiagnosticClient) CreateDiagnostic(prediagnosticID, aprobacion, come
 		fmt.Printf("Error parseando JSON de diagnóstico: %v\n", err)
 		return nil, fmt.Errorf("error parseando JSON de diagnóstico: %w", err)
 	}
+
+	return result, nil
+}
+
+func (c *PreDiagnosticClient) CreateDiagnosticWithNotification(prediagnosticID, aprobacion, comentario string, notificationClient *NotificationClient, userID, patientEmail, patientName string) (map[string]interface{}, error) {
+	// Crear el diagnóstico
+	result, err := c.CreateDiagnostic(prediagnosticID, aprobacion, comentario)
+	if err != nil {
+		return nil, err
+	}
+
+	// Enviar notificación de forma asíncrona
+	go func() {
+		if err := notificationClient.SendDiagnosticReadyNotification(userID, patientEmail, patientName); err != nil {
+			fmt.Printf("Error enviando notificación: %v\n", err)
+		}
+	}()
 
 	return result, nil
 }
