@@ -40,8 +40,8 @@ func (r *mutationResolver) CreateDiagnostic(ctx context.Context, idPrediagnostic
 
 	fmt.Printf("Doctor autorizado creando diagnóstico: %s (%s)\n", userClaims.Email, userClaims.UserID)
 
-	// Llamar al servicio de diagnóstico
-	result, err := r.Resolver.DiagnosticSrv.CreateDiagnostic(idPrediagnostico, input.Aprobacion, input.Comentario)
+	// Llamar al servicio de diagnóstico con notificación automática
+	result, err := r.Resolver.DiagnosticSrv.CreateDiagnosticWithAutoNotification(idPrediagnostico, input.Aprobacion, input.Comentario)
 	if err != nil {
 		return &model.DiagnosticResponse{
 			Success: false,
