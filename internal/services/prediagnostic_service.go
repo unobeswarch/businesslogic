@@ -1,6 +1,10 @@
 package services
 
 import (
+	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/unobeswarch/businesslogic/internal/clients"
 	"github.com/unobeswarch/businesslogic/internal/graph/model"
 )
@@ -36,4 +40,31 @@ func (s *PreDiagnosticService) GetPreDiagnosticByID(id string) (*model.PreDiagno
 		},
 		FechaSubida: data["fecha_subida"].(string),
 	}, nil
+}
+
+func GetAllProcessedCases() ([]byte, int, error) {
+	resp, err := http.Get("http://localhost:8000/prediagnostic/cases")
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("error connecting to prediagnostic service: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error reading response from prediagnostic service: %v", err)
+	}
+
+	return body, resp.StatusCode, nil
+}
+
+func GetPrediagnosticImage(imageFilename string) (*http.Response, error) {
+	url := fmt.Sprintf("http://localhost:8000/prediagnostic/image/%s", imageFilename)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("error conectando con el servicio de prediagnóstico: %v", err)
+	}
+
+	return resp, nil
 }

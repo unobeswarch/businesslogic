@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/unobeswarch/businesslogic/internal/graph"
 	"github.com/unobeswarch/businesslogic/internal/graph/generated"
+	"github.com/unobeswarch/businesslogic/internal/handlers"
 	"github.com/unobeswarch/businesslogic/internal/services"
 )
 
@@ -76,6 +77,14 @@ func main() {
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", authMiddleware(srv))
+	http.Handle("/auth", authMiddleware(http.HandlerFunc(handlers.HandlerLogin)))
+	http.Handle("/register", authMiddleware(http.HandlerFunc(handlers.HandlerRegister)))
+	http.Handle("/upload", authMiddleware(http.HandlerFunc(handlers.HandlerUploadImage)))
+	http.Handle("/userInfo", authMiddleware(http.HandlerFunc(handlers.HandlerUserInfo)))
+	http.Handle("/userImage", authMiddleware(http.HandlerFunc(handlers.HandlerUserImage)))
+	http.Handle("/prediagnostic/cases", authMiddleware(http.HandlerFunc(handlers.HandlerPrediagnosticCases)))
+	http.Handle("/prediagnostic/image/", authMiddleware(http.HandlerFunc(handlers.HandlerPrediagnosticImage)))
+	http.Handle("/prediagnostic/diagnostic/", authMiddleware(http.HandlerFunc(handlers.HandlerDiagnosticDetail)))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Printf("prediagnostic service URL: %s", prediagnosticURL)

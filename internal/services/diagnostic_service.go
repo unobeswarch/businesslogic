@@ -2,6 +2,8 @@ package services
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 
 	"github.com/unobeswarch/businesslogic/internal/clients"
 	"github.com/unobeswarch/businesslogic/internal/models"
@@ -136,4 +138,19 @@ func (s *DiagnosticService) extractStringFromCase(caseData map[string]interface{
 		}
 	}
 	return defaultValue
+}
+
+func CaseDetail(prediagnosticID string) ([]byte, int, error) {
+	resp, err := http.Get("http://localhost:8000/prediagnostic/diagnostic/" + prediagnosticID)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	return respBody, resp.StatusCode, nil
 }
