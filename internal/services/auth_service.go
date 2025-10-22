@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
 
 	_ "github.com/lib/pq"
 )
@@ -131,4 +134,130 @@ func (s *AuthService) ValidateTokenWithAuthBE(ctx context.Context, authHeader st
 		}
 		return nil, fmt.Errorf("validación fallida: %s", msg)
 	}
+}
+
+func (s *AuthService) Login(ctx context.Context, correo string, contrasena string) (map[string]interface{}, int, error) {
+	body, _ := json.Marshal(map[string]string{"correo": correo, "contrasena": contrasena})
+
+	req, _ := http.NewRequestWithContext(ctx, "POST", "http://localhost:8081/auth", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	return result, resp.StatusCode, nil
+}
+
+func (s *AuthService) Register(ctx context.Context, usuario map[string]interface{}) (map[string]interface{}, int, error) {
+	body, err := json.Marshal(usuario)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	req, _ := http.NewRequestWithContext(ctx, "POST", "http://localhost:8081/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	return result, resp.StatusCode, nil
+}
+
+func (s *AuthService) UserInfo(ctx context.Context, authHeader string) (map[string]interface{}, int, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8081/userInfo", nil)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	req.Header.Set("Authorization", authHeader)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	return result, resp.StatusCode, nil
+}
+
+func (s *AuthService) UserImage(ctx context.Context, userID string) ([]byte, string, int, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8081/userImage?id="+userID, nil)
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, "", 0, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", resp.StatusCode, err
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+
+	return body, contentType, resp.StatusCode, nil
+}
+
+func UploadUserImage(token string, fileName string, fileData []byte) (*http.Response, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("foto", filepath.Base(fileName))
+	if err != nil {
+		return nil, err
+	}
+	part.Write(fileData)
+	writer.Close()
+
+	req, err := http.NewRequest("POST", "http://localhost:8081/upload", body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", token)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{}
+	return client.Do(req)
 }
